@@ -65,6 +65,11 @@ class PurchaseRequest(BaseModel):
     course_id: str
 
 
+class NicknameRequest(BaseModel):
+    """FR-35. Length and characters are checked in main.save_me so the error is 422 INVALID_NICKNAME."""
+    nickname: str = Field(max_length=200)
+
+
 # --- LLM output (10.5) ---
 class LLMItem(BaseModel):
     place_id: int

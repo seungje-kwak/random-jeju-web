@@ -314,6 +314,21 @@ export const zh: Messages = {
     seeFull: "查看完整行程",
   },
 
+  account: {
+    guestName: (tag) => `旅行者 ${tag}`,
+    nicknameTitle: "设置昵称",
+    nicknameBody: "这个名字会显示在你的照片和评论旁边。无需注册。",
+    nicknameLabel: "昵称",
+    nicknamePlaceholder: "例如：橘子控",
+    nicknameRule: (min, max) => `${min}–${max} 个字`,
+    save: "保存",
+    saving: "保存中…",
+    cancel: "以后再说",
+    invalid: (min, max) => `请输入 ${min}–${max} 个字，不要换行。`,
+    failed: "无法保存昵称，请重试。",
+    signInFailed: "无法以访客身份开始。请检查网络后重试。",
+  },
+
   states: {
     notFound: "找不到这份行程。",
     notFoundBody: "链接可能有误，或者行程已被删除。",

@@ -1,5 +1,6 @@
 // The frontend only talks to FastAPI (1.3). Base URL comes from NEXT_PUBLIC_API_URL.
-import type { Area, Course, Place, ReplanReason, UserProfileInput } from "./types";
+import { accessToken, refreshedToken } from "./auth";
+import type { Area, Course, Me, Place, ReplanReason, UserProfileInput } from "./types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 const TIMEOUT_MS = 45_000; // 11.1
@@ -48,6 +49,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** For endpoints that need the traveler (US-004): sends the Supabase access token, retries once after a 401. */
+async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const send = (token: string) =>
+    request<T>(path, { ...init, headers: { ...(init?.headers || {}), Authorization: `Bearer ${token}` } });
+  try {
+    return await send(await accessToken());
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return send(await refreshedToken());
+    throw e;
+  }
+}
+
 export const api = {
   areas: () => request<{ areas: Area[] }>("/areas"),
   // With area_id: only that area's places (the course map). Without: every place in Jeju.
@@ -69,4 +82,8 @@ export const api = {
     request<Course>(`/courses/${encodeURIComponent(id)}/shuffle`, { method: "POST" }),
   purchase: (course_id: string) =>
     request<Course>("/purchase", { method: "POST", body: JSON.stringify({ course_id }) }),
+  // tasks/prd-random-jeju-merge.md FR-35
+  me: () => authedRequest<Me>("/me"),
+  saveNickname: (nickname: string) =>
+    authedRequest<Me>("/me", { method: "POST", body: JSON.stringify({ nickname }) }),
 };

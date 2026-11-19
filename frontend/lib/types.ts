@@ -125,3 +125,10 @@ export type Course = {
   items: CourseItem[];
   meal_gaps: MealGap[]; // in start_time order; a free plan only gets the ones among its visible stops
 };
+
+// tasks/prd-random-jeju-merge.md FR-35
+export type Me = {
+  user_id: string;
+  nickname: string | null; // null until the traveler picks one
+  is_anonymous: boolean;
+};

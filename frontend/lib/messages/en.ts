@@ -356,6 +356,22 @@ export const en = {
     seeFull: "See my full day",
   },
 
+  // Random Jeju: guest session and nickname (tasks/prd-random-jeju-merge.md US-003, FR-35)
+  account: {
+    guestName: (tag: string) => `Traveler ${tag}`,
+    nicknameTitle: "Choose a nickname",
+    nicknameBody: "Other travelers will see this name next to your photos and comments. No sign-up needed.",
+    nicknameLabel: "Nickname",
+    nicknamePlaceholder: "e.g. TangerineFan",
+    nicknameRule: (min: number, max: number) => `${min}–${max} characters`,
+    save: "Save",
+    saving: "Saving…",
+    cancel: "Not now",
+    invalid: (min: number, max: number) => `Use ${min} to ${max} characters, without line breaks.`,
+    failed: "Couldn't save your nickname. Try again.",
+    signInFailed: "Couldn't start a guest session. Check your connection and try again.",
+  },
+
   states: {
     notFound: "We couldn't find this plan.",
     notFoundBody: "The link may be wrong, or the plan may have been removed.",

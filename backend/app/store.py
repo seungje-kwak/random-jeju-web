@@ -36,6 +36,8 @@ class Store(Protocol):
     def set_tier(self, course_id: str, tier: str) -> None: ...
     def add_report(self, place_id: int, type_: str) -> dict: ...
     def replace_course(self, course: dict, items: list[dict]) -> None: ...
+    def get_user(self, user_id: str) -> Optional[dict]: ...
+    def save_nickname(self, user_id: str, nickname: str) -> dict: ...
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +175,17 @@ class SupabaseStore:
         rows = self._sb.table("place_reports").insert({"place_id": place_id, "type": type_}).execute().data
         r = rows[0]
         return {"place_id": r["place_id"], "type": r["type"], "created_at": r["created_at"]}
+
+    # --- users (RandomJeju table: id references auth.users, nickname, ...; FR-33) ---
+    def get_user(self, user_id: str) -> Optional[dict]:
+        rows = self._sb.table("users").select("id, nickname").eq("id", user_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def save_nickname(self, user_id: str, nickname: str) -> dict:
+        """Creates the row on the first nickname; later calls change only `nickname` (other columns stay)."""
+        rows = (self._sb.table("users").upsert({"id": user_id, "nickname": nickname}, on_conflict="id")
+                .execute().data)
+        return rows[0]
 
 
 _store: Optional[Store] = None

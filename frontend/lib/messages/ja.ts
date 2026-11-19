@@ -314,6 +314,21 @@ export const ja: Messages = {
     seeFull: "フルプランを見る",
   },
 
+  account: {
+    guestName: (tag) => `旅行者 ${tag}`,
+    nicknameTitle: "ニックネームを決めてください",
+    nicknameBody: "写真やコメントの横にこの名前が表示されます。登録は不要です。",
+    nicknameLabel: "ニックネーム",
+    nicknamePlaceholder: "例：みかん好き",
+    nicknameRule: (min, max) => `${min}〜${max}文字`,
+    save: "保存",
+    saving: "保存中…",
+    cancel: "あとで",
+    invalid: (min, max) => `${min}〜${max}文字で、改行なしで入力してください。`,
+    failed: "ニックネームを保存できませんでした。もう一度お試しください。",
+    signInFailed: "ゲストとして開始できませんでした。接続を確認して、もう一度お試しください。",
+  },
+
   states: {
     notFound: "このプランが見つかりませんでした。",
     notFoundBody: "リンクが間違っているか、プランが削除された可能性があります。",

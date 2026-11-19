@@ -35,6 +35,17 @@ LLM_FALLBACK_RULES = _bool("LLM_FALLBACK_RULES", True)
 USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
 USE_LLM = bool(LLM_API_KEY)
 
+# --- sign-in (tasks/prd-random-jeju-merge.md US-004) ---
+# Supabase access tokens are checked in app/auth.py. A project on the legacy shared secret signs them with
+# HS256: put that secret in SUPABASE_JWT_SECRET. A project on signing keys (ES256/RS256) publishes them at
+# AUTH_JWKS_URL and needs no secret. Both work at the same time while a project moves between them.
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "").strip()
+AUTH_JWKS_URL = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json" if SUPABASE_URL else ""
+AUTH_ISSUER = f"{SUPABASE_URL.rstrip('/')}/auth/v1" if SUPABASE_URL else ""
+AUTH_AUDIENCE = "authenticated"
+AUTH_LEEWAY_SEC = 30                 # clock difference allowed between Supabase and this server
+NICKNAME_MIN, NICKNAME_MAX = 2, 12   # FR-35
+
 # Seed files built by scripts/build_places.py and uploaded by scripts/seed_supabase.py
 SEED_DATA_DIR = BACKEND_DIR / "app" / "data"
 

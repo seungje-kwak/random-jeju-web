@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import areas, config, planner
+from .auth import User, current_user
 from .course_view import build_course
 from .errors import ApiError
-from .schemas import CreateCourseRequest, PurchaseRequest, ReplanRequest, ReportRequest
+from .schemas import CreateCourseRequest, NicknameRequest, PurchaseRequest, ReplanRequest, ReportRequest
 from .store import get_store
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +22,7 @@ app = FastAPI(title="MyPace Jeju API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -28,9 +30,9 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     get_store()  # fail at startup, not on the first request, when Supabase is not configured
-    log.info("store=supabase llm=%s provider=%s model=%s require_verified=%s",
+    log.info("store=supabase llm=%s provider=%s model=%s require_verified=%s auth_hs256=%s",
              "on" if config.USE_LLM else "off (rule planner)", config.LLM_PROVIDER, config.LLM_MODEL,
-             config.REQUIRE_VERIFIED)
+             config.REQUIRE_VERIFIED, "on" if config.SUPABASE_JWT_SECRET else "off (SUPABASE_JWT_SECRET empty)")
 
 
 def _course_response(course_id: str) -> dict:
@@ -119,3 +121,28 @@ def purchase(req: PurchaseRequest) -> dict:
         raise ApiError(404, "COURSE_NOT_FOUND", "Course not found.")
     store.set_tier(req.course_id, "premium")
     return _course_response(req.course_id)
+
+
+# --- the caller (tasks/prd-random-jeju-merge.md FR-35) ---
+def _me(user: User, row: Optional[dict]) -> dict:
+    return {"user_id": user.id, "nickname": (row or {}).get("nickname"), "is_anonymous": user.is_anonymous}
+
+
+def clean_nickname(raw: str) -> str:
+    """Trimmed; 2-12 characters; no control or format characters (line breaks, zero-width marks)."""
+    name = raw.strip()
+    if not (config.NICKNAME_MIN <= len(name) <= config.NICKNAME_MAX) or any(
+            unicodedata.category(ch).startswith("C") for ch in name):
+        raise ApiError(422, "INVALID_NICKNAME",
+                       f"Nickname must be {config.NICKNAME_MIN}-{config.NICKNAME_MAX} characters.")
+    return name
+
+
+@app.get("/me")
+def get_me(user: User = Depends(current_user)) -> dict:
+    return _me(user, get_store().get_user(user.id))
+
+
+@app.post("/me")
+def save_me(req: NicknameRequest, user: User = Depends(current_user)) -> dict:
+    return _me(user, get_store().save_nickname(user.id, clean_nickname(req.nickname)))

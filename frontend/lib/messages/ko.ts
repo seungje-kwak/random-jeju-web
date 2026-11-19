@@ -314,6 +314,21 @@ export const ko: Messages = {
     seeFull: "전체 일정 보기",
   },
 
+  account: {
+    guestName: (tag) => `여행자 ${tag}`,
+    nicknameTitle: "닉네임을 정해 주세요",
+    nicknameBody: "사진과 댓글 옆에 이 이름이 보여요. 가입은 필요 없어요.",
+    nicknameLabel: "닉네임",
+    nicknamePlaceholder: "예: 귤좋아",
+    nicknameRule: (min, max) => `${min}~${max}자`,
+    save: "저장",
+    saving: "저장 중…",
+    cancel: "다음에",
+    invalid: (min, max) => `${min}~${max}자로, 줄바꿈 없이 입력해 주세요.`,
+    failed: "닉네임을 저장하지 못했어요. 다시 시도해 주세요.",
+    signInFailed: "게스트로 시작하지 못했어요. 연결을 확인하고 다시 시도해 주세요.",
+  },
+
   states: {
     notFound: "이 일정을 찾을 수 없습니다.",
     notFoundBody: "링크가 잘못되었거나 일정이 삭제되었을 수 있습니다.",
