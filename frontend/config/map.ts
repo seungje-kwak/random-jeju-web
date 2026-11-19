@@ -11,7 +11,7 @@ export const MAP_CONFIG = {
   fitPaddingPx: 40,
   // Range of the place data. Places outside are not in the DB and are never drawn (7.10).
   // If you change it, change BOUNDS in backend/scripts/build_places.py and the fallback SVG too.
-  bounds: { lngMin: 126.44, lngMax: 126.56, latMin: 33.46, latMax: 33.53 },
+  bounds: { lngMin: 126.1, lngMax: 127.0, latMin: 33.1, latMax: 34.0 },
   // Map box width / height. Same as the fallback SVG (7.8: width/height ≈ (lng span × 0.837) / lat span).
   aspectRatio: 10 / 7,
   fallbackImage: "/map/jeju-city-fallback.svg",

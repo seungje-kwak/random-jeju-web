@@ -16,7 +16,7 @@ data/                  장소 시드 CSV, 데모 코스
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | M0 | 저장소 만들기, RLS 긴급 조치, DB 비밀번호 교체, Vercel·Railway 연결 | 저장소·RLS·비밀번호 완료 (2026-11-19). Vercel·Railway 연결 남음 |
-| M1 | 해커톤 스키마·장소 데이터를 RandomJeju Supabase로 | |
+| M1 | 해커톤 스키마·장소 데이터를 RandomJeju Supabase로 | 완료 (2026-11-19). 배포 환경 변수(US-005)는 Vercel·Railway 연결 뒤 |
 | M2 | 익명 세션, 토큰 검증 | |
 | M3 | 랜덤 지점 + 주변 코스 | |
 | M4 | 사진 업로드, 사진 지도, 피드 | |
@@ -27,7 +27,10 @@ data/                  장소 시드 CSV, 데모 코스
 ## 마이그레이션
 
 - `0000_randomjeju_baseline.sql`: RandomJeju 프로젝트에 이미 있는 구조(2026-11-19 덤프). 다시 실행하지 않는다.
-- `0001_mypace.sql`: 해커톤 테이블. M1에서 RandomJeju 프로젝트의 SQL 편집기에서 실행한다.
+- `0001_mypace.sql`: 해커톤 테이블. 2026-11-19 적용.
+- `0002_merge.sql`: 통합용 열과 `visits` 테이블 (PRD FR-30). 2026-11-19 적용. 시간 열 변환(FR-32)과 정책 정리(FR-34)는 Ktor를 끄는 M7에 한다.
+
+장소 데이터는 `backend/scripts/seed_supabase.py`로 넣는다 (다시 실행해도 된다).
 
 ## 로컬 실행
 

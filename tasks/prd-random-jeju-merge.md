@@ -106,21 +106,22 @@
 **설명:** 개발자로서, 해커톤 테이블과 장소 데이터를 Supabase A에 넣어서 한 DB로 서비스하고 싶다.
 
 **완료 기준:**
-- [ ] `backend/sql/schema.sql`을 Supabase A의 SQL 편집기에서 실행해 8개 테이블(`areas`, `places`, `place_accessibility`, `food_options`, `phrase_cards`, `courses`, `course_items`, `place_reports`)이 생긴다. RandomJeju 테이블(`grids`, `locations`, `admin_areas`, `photos`, `posts`, `post_likes`, `comments`, `users`)과 이름이 겹치지 않음을 실행 전에 확인한다
-- [ ] `backend/.env`의 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 A로 바꾸고 `scripts/seed_supabase.py`, `scripts/reset_emma.py`가 성공한다
-- [ ] `places` 1,065행, `areas` 14행이 들어간다
-- [ ] 백엔드 `pytest`가 모두 통과하고, `scripts/eval_planner.py`(규칙 플래너) 결과가 마지막으로 저장된 결과(`backend/eval/hub-variety-rules.json`)와 같다
-- [ ] 로컬 프론트에서 온보딩 → 코스 → 여행 모드가 A를 상대로 동작한다
+- [x] `backend/sql/schema.sql`을 Supabase A의 SQL 편집기에서 실행해 8개 테이블(`areas`, `places`, `place_accessibility`, `food_options`, `phrase_cards`, `courses`, `course_items`, `place_reports`)이 생긴다. RandomJeju 테이블(`grids`, `locations`, `admin_areas`, `photos`, `posts`, `post_likes`, `comments`, `users`)과 이름이 겹치지 않음을 실행 전에 확인한다 (2026-11-19, `supabase/migrations/0001_mypace.sql`로 적용. 적용할 때 8개 테이블은 이미 빈 채로 있었고 열은 스키마와 같았다)
+- [x] `backend/.env`의 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 A로 바꾸고 `scripts/seed_supabase.py`가 성공한다
+- [x] `places` 1,065행, `areas` 14행이 들어간다 (accessibility 1,065, food_options 351, phrase_cards 49)
+- [x] 백엔드 `pytest`가 모두 통과한다 (213 통과, 3 건너뜀). V9 UI가 되돌려 놓은 `frontend/config/map.ts`의 `bounds`를 제주 전체로 고쳐 `test_seed_bounds_cover_all_of_jeju`도 통과한다. 이 값은 지도 컴포넌트가 쓰지 않으므로(`lib/landmarks.ts`의 `ISLAND_MAP_BOUNDS`를 쓴다) 화면은 바뀌지 않는다
+- [x] 로컬에서 코스 만들기(4개 지역) → 코스 보기 → 비 재구성 → Shuffle → 여행 모드가 A를 상대로 동작한다
+- 뺀 것: `scripts/reset_emma.py`(해커톤 발표용 Emma 데모)는 Random Jeju에 옮기지 않는다. 해커톤 저장소에서도 10:00–18:00 안에 정류장 9(이호테우해변)가 들어가지 않아 실패한다 (`f062493` 이후 시간 계산). `eval_planner.py`는 Supabase를 읽지 않으므로 DB 이전 확인에 쓰지 않는다
 
 #### US-002: RandomJeju 스키마를 저장소에 기록하고 보강하기 (P0, M1)
 **설명:** 개발자로서, Supabase A에 손으로 만들어진 RandomJeju 테이블을 마이그레이션 파일로 남기고, 통합에 필요한 열과 제약을 더하고 싶다.
 
 **완료 기준:**
-- [ ] `pg_dump --schema-only`로 A의 `public` 스키마를 받아 `supabase/migrations/0000_randomjeju_baseline.sql`로 저장한다 (데이터 없이). 2026-11-19 조회로 확인한 구조(8.5)와 같아야 한다
-- [ ] `0001_mypace.sql`은 해커톤 `schema.sql`과 같은 내용이다
-- [ ] `0002_merge.sql`이 FR-30–FR-33의 변경을 모두 담고, 두 번 실행해도 오류가 없다 (`if not exists`)
-- [ ] `post_likes`는 이미 `(post_id, user_id)`가 기본 키라 고유 제약을 더하지 않는다. 같은 정의의 중복 제약 `post_likes_unique_post_user`는 지운다
-- [ ] 모든 테이블에 RLS가 켜져 있다 (FR-34). M0의 긴급 조치(8.6)가 이미 적용돼 있으면 그대로 둔다
+- [x] `pg_dump --schema-only`로 A의 `public` 스키마를 받아 `supabase/migrations/0000_randomjeju_baseline.sql`로 저장한다 (데이터 없이). 2026-11-19 조회로 확인한 구조(8.5)와 같아야 한다
+- [x] `0001_mypace.sql`은 해커톤 `schema.sql`과 같은 내용이다
+- [x] `0002_merge.sql`이 FR-30의 변경을 담고, 두 번 실행해도 오류가 없다 (`if not exists`). 2026-11-19 적용. **FR-32(시간 열 변환)는 M7로 미룬다**: Ktor가 아직 이 열들에 타임존 없는 값을 쓰고 있어서, 지금 바꾸면 Android 업로드의 촬영 시각이 9시간 어긋난다. FR-34의 정책 정리도 M7이다
+- [x] `post_likes`는 이미 `(post_id, user_id)`가 기본 키라 고유 제약을 더하지 않는다. 같은 정의의 중복 제약 `post_likes_unique_post_user`는 지운다. `admin_areas.geom`의 중복 인덱스 `idx_admin_geom`도 지운다
+- [x] 모든 테이블에 RLS가 켜져 있다 (FR-34). 새 `visits` 테이블 포함. 적용 뒤 Ktor 응답(사진 28, 클러스터 12)이 그대로다
 
 #### US-003: 익명 세션과 닉네임 (P0, M2)
 **설명:** 사용자로서, 가입하지 않고도 사진을 올리고 좋아요와 댓글을 남기고 싶다.
