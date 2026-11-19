@@ -152,3 +152,16 @@ GRID_REACH_KM = 5.0         # FR-0 (c): a dense place must be this close to the 
 PREVIEW_RADIUS_KM = 5.0     # FR-3: places shown under a fresh random point
 PREVIEW_COUNT = 3
 RANDOM_FED_DETOUR_KM = 3.0  # FR-6: how much farther a hub with a restaurant for every meal may be
+
+# --- photo posts, feed, comments (tasks/prd-random-jeju-merge.md FR-11 - FR-18) ---
+POST_CATEGORIES = ("맛집", "카페", "쇼핑", "관광", "문화", "스포츠")   # DB enum post_category (Q-10)
+PHOTO_MAX_BYTES = 15 * 1024 * 1024
+PHOTO_MAX_PIXELS = 40_000_000       # keeps Pillow's memory use bounded on Railway (8.3)
+PHOTO_MAX_EDGE = 2048
+PHOTO_JPEG_QUALITY = 85
+THUMB_EDGE = 280                    # shown at 140 px; 2x for sharp screens
+PHOTO_BUCKET, THUMB_BUCKET = "photos", "thumbnails"
+UPLOADS_PER_DAY = 30
+POST_CONTENT_MAX = 500
+COMMENT_MAX = 500
+FEED_PAGE = 20

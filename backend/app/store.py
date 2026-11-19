@@ -42,6 +42,20 @@ class Store(Protocol):
     def add_location(self, row: dict) -> dict: ...
     def get_location(self, location_id: int) -> Optional[dict]: ...
     def link_location(self, location_id: int, course_id: str) -> None: ...
+    # photo posts (FR-11 - FR-18)
+    def upload_file(self, bucket: str, name: str, data: bytes) -> str: ...
+    def remove_files(self, paths: list[str]) -> None: ...
+    def uploads_since(self, user_id: str, since_utc: str) -> int: ...
+    def create_photo_post(self, args: dict) -> dict: ...
+    def feed(self, category: Optional[str], before: Optional[str], before_id: Optional[str], limit: int,
+             post_id: Optional[str] = None) -> list[dict]: ...
+    def liked_post_ids(self, user_id: str, post_ids: list[str]) -> set[str]: ...
+    def toggle_like(self, post_id: str, user_id: str) -> dict: ...
+    def list_comments(self, post_id: str, limit: int) -> list[dict]: ...
+    def add_comment(self, post_id: str, user_id: str, content: str) -> dict: ...
+    def nicknames(self, user_ids: list[str]) -> dict[str, Optional[str]]: ...
+    def photos_in_bbox(self, box: dict, limit: int) -> list[dict]: ...
+    def photo_clusters(self, box: dict) -> list[dict]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +221,63 @@ class SupabaseStore:
 
     def link_location(self, location_id: int, course_id: str) -> None:
         self._sb.table("locations").update({"course_id": course_id}).eq("location_id", location_id).execute()
+
+    # --- photo posts, feed, likes, comments, photo map (FR-11 - FR-18; functions in 0004_posts.sql) ---
+    def upload_file(self, bucket: str, name: str, data: bytes) -> str:
+        """Returns the bucket-qualified path ("photos/<name>") that photos.file_path stores."""
+        self._sb.storage.from_(bucket).upload(path=name, file=data,
+                                              file_options={"content-type": "image/jpeg", "upsert": "false"})
+        return f"{bucket}/{name}"
+
+    def remove_files(self, paths: list[str]) -> None:
+        by_bucket: dict[str, list[str]] = {}
+        for p in paths:
+            bucket, _, name = p.partition("/")
+            by_bucket.setdefault(bucket, []).append(name)
+        for bucket, names in by_bucket.items():
+            self._sb.storage.from_(bucket).remove(names)
+
+    def uploads_since(self, user_id: str, since_utc: str) -> int:
+        res = (self._sb.table("photos").select("photo_id", count="exact").eq("user_id", user_id)
+               .gte("timestamp", since_utc).limit(1).execute())
+        return res.count or 0
+
+    def create_photo_post(self, args: dict) -> dict:
+        return self._sb.rpc("create_photo_post", args).execute().data[0]
+
+    def feed(self, category, before, before_id, limit, post_id=None) -> list[dict]:
+        return self._sb.rpc("feed_posts", {"p_category": category, "p_before": before, "p_before_id": before_id,
+                                           "p_limit": limit, "p_post_id": post_id}).execute().data
+
+    def liked_post_ids(self, user_id: str, post_ids: list[str]) -> set[str]:
+        if not post_ids:
+            return set()
+        rows = (self._sb.table("post_likes").select("post_id").eq("user_id", user_id).in_("post_id", post_ids)
+                .execute().data)
+        return {r["post_id"] for r in rows}
+
+    def toggle_like(self, post_id: str, user_id: str) -> dict:
+        return self._sb.rpc("toggle_like", {"p_post": post_id, "p_user": user_id}).execute().data[0]
+
+    def list_comments(self, post_id: str, limit: int) -> list[dict]:
+        return (self._sb.table("comments").select("id, user_id, content, created_at").eq("post_id", post_id)
+                .order("created_at").limit(limit).execute().data)
+
+    def add_comment(self, post_id: str, user_id: str, content: str) -> dict:
+        return self._sb.rpc("add_comment", {"p_post": post_id, "p_user": user_id, "p_content": content}).execute().data[0]
+
+    def nicknames(self, user_ids: list[str]) -> dict[str, Optional[str]]:
+        ids = sorted({u for u in user_ids if u})
+        if not ids:
+            return {}
+        rows = self._sb.table("users").select("id, nickname").in_("id", ids).execute().data
+        return {r["id"]: r.get("nickname") for r in rows}
+
+    def photos_in_bbox(self, box: dict, limit: int) -> list[dict]:
+        return self._sb.rpc("photos_in_bbox", {**box, "max_rows": limit}).execute().data
+
+    def photo_clusters(self, box: dict) -> list[dict]:
+        return self._sb.rpc("photo_clusters", box).execute().data
 
 
 _store: Optional[Store] = None

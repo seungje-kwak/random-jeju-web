@@ -12,6 +12,7 @@ from . import areas, config, planner, random_spots
 from .auth import User, current_user, optional_user
 from .course_view import build_course
 from .errors import ApiError
+from .posts_api import router as posts_router
 from .schemas import (CreateCourseRequest, NicknameRequest, PurchaseRequest, RandomCourseRequest, ReplanRequest,
                       ReportRequest)
 from .store import get_store
@@ -26,6 +27,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+app.include_router(posts_router)   # photo posts, feed, likes, comments, photo map (M4)
 
 
 @app.on_event("startup")
