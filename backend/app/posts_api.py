@@ -229,4 +229,7 @@ def photo_clusters(min_lat: Optional[float] = None, min_lng: Optional[float] = N
     rows = get_store().photo_clusters(_box(min_lat, min_lng, max_lat, max_lng))
     return {"clusters": [{"admin_area_id": r["admin_area_id"], "name": r["name"], "count": r["count"],
                           "lat": public_coord(r["lat"]), "lng": public_coord(r["lng"]),
-                          "thumb_url": public_url(r["thumb_path"])} for r in rows]}
+                          "thumb_url": public_url(r["thumb_path"]),
+                          # where its photos are, so a tap can zoom to them (all rounded like the photos)
+                          "extent": {k: public_coord(r.get(k)) for k in ("south", "west", "north", "east")}}
+                         for r in rows]}

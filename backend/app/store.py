@@ -66,9 +66,18 @@ class SupabaseStore:
     PAGE_SIZE = 1000
 
     def __init__(self) -> None:
-        from supabase import create_client  # imported lazily so local mode needs no network
+        import httpx
+        from supabase import ClientOptions, create_client  # imported lazily so local mode needs no network
 
-        self._sb = create_client(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY)
+        # One HTTP/1.1 pool for PostgREST and Storage. supabase-py's default is one shared HTTP/2 connection;
+        # FastAPI runs these sync calls on several threads, and two requests at once on that connection made
+        # Supabase drop it ("Server disconnected", seen 2026-11-19 on GET /posts/{id}/comments). httpx's
+        # HTTP/1.1 pool is safe across threads; `retries` re-opens a connection that failed to connect.
+        http = httpx.Client(http2=False, timeout=httpx.Timeout(30.0, connect=10.0),
+                            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10, keepalive_expiry=30),
+                            transport=httpx.HTTPTransport(retries=2))
+        self._sb = create_client(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY,
+                                 options=ClientOptions(httpx_client=http))
         self._places_cache: tuple[float, list[dict]] | None = None
         self._cards_cache: tuple[float, list[dict]] | None = None
         self._areas_cache: tuple[float, list[dict]] | None = None

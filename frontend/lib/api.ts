@@ -1,6 +1,9 @@
 // The frontend only talks to FastAPI (1.3). Base URL comes from NEXT_PUBLIC_API_URL.
-import { accessToken, refreshedToken } from "./auth";
-import type { Area, Course, Me, Place, RandomPoint, ReplanReason, UserProfileInput } from "./types";
+import { accessToken, existingToken, refreshedToken } from "./auth";
+import type {
+  Area, Comment, Course, FeedPage, Me, Place, PhotoCluster, PhotoMarker, Post, PostCategory, PostMeta, RandomPoint,
+  ReplanReason, UserProfileInput,
+} from "./types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 const TIMEOUT_MS = 45_000; // 11.1
@@ -22,7 +25,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+      // FormData (photo upload) sets its own multipart Content-Type with the boundary
+      headers: { ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }), ...(init?.headers || {}) },
       signal: ctrl.signal,
       cache: "no-store",
     });
@@ -48,6 +52,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return res.json() as Promise<T>;
 }
+
+/** For reads anyone may do: adds the token only when a session already exists (is_liked, is_mine). */
+async function readRequest<T>(path: string): Promise<T> {
+  const token = await existingToken();
+  try {
+    return await request<T>(path, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  } catch (e) {
+    // an expired session must not block reading: ask again without it
+    if (token && e instanceof ApiError && e.status === 401) return request<T>(path);
+    throw e;
+  }
+}
+
+type Box = { min_lat: number; min_lng: number; max_lat: number; max_lng: number };
+const boxQuery = (b: Box) =>
+  `min_lat=${b.min_lat}&min_lng=${b.min_lng}&max_lat=${b.max_lat}&max_lng=${b.max_lng}`;
 
 /** For endpoints that need the traveler (US-004): sends the Supabase access token, retries once after a 401. */
 async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -89,6 +109,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ location_id, user_profile, start_time, end_time }),
     }),
+  // tasks/prd-random-jeju-merge.md FR-11 - FR-18: photo posts, feed, likes, comments, photo map
+  feed: (category?: PostCategory | null, cursor?: string | null) => {
+    const q = new URLSearchParams();
+    if (category) q.set("category", category);
+    if (cursor) q.set("cursor", cursor);
+    const s = q.toString();
+    return readRequest<FeedPage>(`/posts${s ? `?${s}` : ""}`);
+  },
+  post: (id: string) => readRequest<Post>(`/posts/${encodeURIComponent(id)}`),
+  createPost: (image: Blob, meta: PostMeta) => {
+    const form = new FormData();
+    form.append("image", image, "photo.jpg");
+    form.append("meta", JSON.stringify(meta));
+    return authedRequest<{ post: Post; visit: Post["visit"] }>("/posts", { method: "POST", body: form });
+  },
+  like: (id: string) =>
+    authedRequest<{ liked: boolean; like_count: number }>(`/posts/${encodeURIComponent(id)}/like`, { method: "POST" }),
+  comments: (id: string) => readRequest<{ comments: Comment[] }>(`/posts/${encodeURIComponent(id)}/comments`),
+  addComment: (id: string, content: string) =>
+    authedRequest<Comment>(`/posts/${encodeURIComponent(id)}/comments`, { method: "POST", body: JSON.stringify({ content }) }),
+  photoMap: (b: Box) => request<{ photos: PhotoMarker[] }>(`/photos/map?${boxQuery(b)}`),
+  photoClusters: (b: Box) => request<{ clusters: PhotoCluster[] }>(`/photos/clusters?${boxQuery(b)}`),
   // tasks/prd-random-jeju-merge.md FR-35
   me: () => authedRequest<Me>("/me"),
   saveNickname: (nickname: string) =>

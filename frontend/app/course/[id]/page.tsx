@@ -277,6 +277,10 @@ export default function CoursePage() {
             <Link href="/onboarding" className="v9-outline">
               {c.edit}
             </Link>
+            {/* US-021: a photo from this course carries its id (the check-in of M5 uses it) */}
+            <Link href={`/upload?course_id=${encodeURIComponent(course.id)}`} className="v9-outline">
+              📷 {M.social.uploadFromCourse}
+            </Link>
             <Link href={`/course/${course.id}/trip`} className="v9-primary">
               {C.start}
             </Link>

@@ -166,3 +166,47 @@ export type Me = {
   nickname: string | null; // null until the traveler picks one
   is_anonymous: boolean;
 };
+
+// tasks/prd-random-jeju-merge.md FR-11 - FR-18. The values are the DB enum post_category (Korean).
+export type PostCategory = "맛집" | "카페" | "쇼핑" | "관광" | "문화" | "스포츠";
+export const POST_CATEGORIES: readonly PostCategory[] = ["관광", "맛집", "카페", "쇼핑", "문화", "스포츠"];
+
+export type Author = { nickname: string | null; tag: string | null };
+
+export type Post = {
+  post_id: string;
+  author: Author;
+  is_mine: boolean;
+  created_at: string;
+  content: string | null;
+  category: PostCategory;
+  image_url: string | null;
+  thumb_url: string | null;
+  lat: number | null;            // rounded to about 100 m by the server (FR-13a)
+  lng: number | null;
+  like_count: number;
+  comment_count: number;
+  is_liked: boolean;
+  visit: null | { kind: "random_point" | "course_place"; place_name_ko: string | null };   // M5
+};
+
+export type FeedPage = { posts: Post[]; next_cursor: string | null };
+
+export type Comment = { id: string; author: Author; is_mine: boolean; content: string; created_at: string };
+
+export type PhotoMarker = { photo_id: number; post_id: string; lat: number; lng: number; thumb_url: string | null };
+export type PhotoCluster = {
+  admin_area_id: number; name: string; count: number; lat: number; lng: number; thumb_url: string | null;
+  extent: { south: number; west: number; north: number; east: number };   // where its photos are
+};
+
+export type LocationSource = "exif" | "device" | "manual";
+export type PostMeta = {
+  category: PostCategory;
+  content?: string;
+  lat?: number;
+  lng?: number;
+  location_source?: LocationSource;
+  taken_at?: string;             // ISO; with an offset when known
+  course_id?: string;
+};

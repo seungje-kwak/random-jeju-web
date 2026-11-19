@@ -17,6 +17,9 @@ export const MAP_CONFIG = {
   fallbackImage: "/map/jeju-city-fallback.svg",
   // Course line (7.6), shared by both maps.
   routeColor: "#1f7a8c",
+  // tasks/prd-random-jeju-merge.md US-023: on the photo map, at this Kakao level or wider, photos are grouped
+  // by eup/myeon/dong; closer in, each photo is its own marker. Kakao level 1 is the closest.
+  clusterMinLevel: 7,
 };
 
 export type Bounds = typeof MAP_CONFIG.bounds;

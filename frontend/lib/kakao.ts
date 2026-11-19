@@ -3,22 +3,26 @@
 import { MAP_CONFIG } from "@/config/map";
 
 export type KLatLng = { getLat(): number; getLng(): number };
-export type KLatLngBounds = { extend(p: KLatLng): void };
+export type KLatLngBounds = { extend(p: KLatLng): void; getSouthWest(): KLatLng; getNorthEast(): KLatLng };
 export type KMap = {
   setBounds(b: KLatLngBounds, top?: number, right?: number, bottom?: number, left?: number): void;
+  getBounds(): KLatLngBounds;
   setCenter(p: KLatLng): void;
+  getCenter(): KLatLng;
   panTo(p: KLatLng): void;
   setLevel(level: number, options?: { animate?: boolean | { duration: number }; anchor?: KLatLng }): void;
   getLevel(): number;
   relayout(): void;
 };
 export type KLayer = { setMap(map: KMap | null): void };
+/** The argument of a map "click" listener. */
+export type KMouseEvent = { latLng: KLatLng };
 
 export type KakaoMaps = {
   load(cb: () => void): void;
   event?: {
-    addListener(target: KMap, eventName: string, callback: () => void): void;
-    removeListener(target: KMap, eventName: string, callback: () => void): void;
+    addListener(target: KMap, eventName: string, callback: (e?: KMouseEvent) => void): void;
+    removeListener(target: KMap, eventName: string, callback: (e?: KMouseEvent) => void): void;
   };
   LatLng: new (lat: number, lng: number) => KLatLng;
   LatLngBounds: new () => KLatLngBounds;

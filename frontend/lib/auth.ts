@@ -14,6 +14,19 @@ export class AuthError extends Error {
 
 let signingIn: Promise<string> | null = null;
 
+/** The current token if there already is a session, else null. For reads (the feed, comments): reading
+ *  never makes a guest session, it only tells the server who is asking (is_liked, is_mine). */
+export async function existingToken(): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data } = await sb.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** A valid access token, signing in as a guest first if there is no session. Concurrent callers share one sign-in. */
 export async function accessToken(): Promise<string> {
   const sb = getSupabase();

@@ -187,7 +187,8 @@ class FakeStore:
         return [{"photo_id": 1, "post_id": "p", "lat": 33.456789, "lng": 126.512345, "thumb_path": "thumbnails/a.jpg"}]
     def photo_clusters(self, box):
         return [{"admin_area_id": 2, "name": "애월읍", "count": 3, "lat": 33.46, "lng": 126.33,
-                 "thumb_path": "https://old/full.jpg"}]
+                 "thumb_path": "https://old/full.jpg", "south": 33.38812, "west": 126.3111, "north": 33.4611,
+                 "east": 126.44849}]
 
 
 def token(sub: str) -> dict:
@@ -332,6 +333,7 @@ def test_photo_map_rounds_and_validates(client):
     assert (m["lat"], m["lng"]) == (33.457, 126.512) and m["thumb_url"].endswith("thumbnails/a.jpg")
     c = client.get("/photos/clusters?min_lat=33&min_lng=126&max_lat=34&max_lng=127").json()["clusters"][0]
     assert c["name"] == "애월읍" and c["thumb_url"] == "https://old/full.jpg"
+    assert c["extent"] == {"south": 33.388, "west": 126.311, "north": 33.461, "east": 126.448}
     for q in ("", "min_lat=34&min_lng=126&max_lat=33&max_lng=127", "min_lat=33&min_lng=126&max_lat=34"):
         r = client.get(f"/photos/map?{q}")
         assert r.status_code == 422 and r.json()["detail"]["code"] == "INVALID_BBOX"

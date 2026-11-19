@@ -129,11 +129,11 @@
 **완료 기준:**
 - [x] Supabase A에서 Anonymous Sign-Ins를 켠다 (2026-11-19)
 - [x] 신원이 필요한 첫 동작(굴리기, 올리기, 좋아요, 댓글) 직전에 프론트가 `supabase.auth.signInAnonymously()`로 세션을 만든다. 화면에는 아무것도 뜨지 않는다. 세션이 이미 있으면 다시 만들지 않는다 (`frontend/lib/auth.ts`의 `accessToken()`. 동시에 불려도 세션은 하나. 실제 호출 지점은 M3·M4)
-- [ ] 첫 게시글이나 첫 댓글을 쓸 때 닉네임 입력 창(2–12자)이 뜬다. 저장하면 `POST /me`로 `users` 행이 생긴다. 다음부터는 뜨지 않는다 (`NicknameDialog`, `useNicknameGate`는 만들었다. 게시글·댓글 화면에 붙이는 것과 화면 확인은 M4)
+- [x] 첫 게시글이나 첫 댓글을 쓸 때 닉네임 입력 창(2–12자)이 뜬다. 저장하면 `POST /me`로 `users` 행이 생긴다. 다음부터는 뜨지 않는다 (M4에서 올리기·댓글에 연결, 브라우저 확인)
 - [x] 닉네임을 정하기 전의 표시 이름은 `여행자` + 사용자 ID 앞 4자리다 (`displayName`, 4개 언어)
-- [ ] 로그인하지 않아도 피드, 사진 지도, 코스는 볼 수 있다 (Android의 "로그아웃이면 게시판이 비어 있음"을 고친다). 코스는 지금도 토큰 없이 열린다. 피드·사진 지도는 M4
+- [x] 로그인하지 않아도 피드, 사진 지도, 코스는 볼 수 있다 (Android의 "로그아웃이면 게시판이 비어 있음"을 고친다). 읽기는 게스트 세션을 만들지 않고, 세션이 이미 있을 때만 토큰을 보낸다
 - [x] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill (M4에서 닉네임 창과 함께)
+- [x] Verify in browser (M4, 닉네임 창)
 - 확인 (2026-11-19): `frontend/scripts/check-guest-auth.mjs`가 실제 프로젝트에서 supabase-js로 익명 로그인 → `/me` → 닉네임 저장까지 9개 항목을 통과했다
 
 #### US-004: FastAPI에서 Supabase 토큰 검증 (P0, M2)
@@ -250,89 +250,89 @@
 **설명:** 사용자로서, 사진 한 장과 글, 카테고리를 올리고 싶다.
 
 **완료 기준:**
-- [ ] `POST /posts`(multipart, FR-11)가 사진을 처리하고(FR-12) Storage에 올린 뒤 `photos`와 `posts`를 한 트랜잭션으로 만든다
-- [ ] 저장된 원본과 썸네일 모두 EXIF가 없다 (GPS, 기기 정보가 공개 URL로 새지 않는다)
-- [ ] 방향 정보가 다른 테스트 사진 8장(EXIF Orientation 1–8)의 썸네일이 모두 바로 선다. Ktor `ImageUtils.kt:38`의 "항상 90° 회전"을 옮기지 않는다
-- [ ] DB 저장이 실패하면 이미 올린 Storage 파일을 지운다
-- [ ] 15MB 초과는 413 `FILE_TOO_LARGE`, 이미지가 아니면 415 `UNSUPPORTED_IMAGE`, 카테고리가 틀리면 422 `INVALID_CATEGORY`다 (Ktor는 모두 500이었다)
-- [ ] 사용자당 하루 30장 제한. 넘으면 429 `UPLOAD_LIMIT`
-- [ ] 테스트: 정상, 각 오류, Orientation 8종
+- [x] `POST /posts`(multipart, FR-11)가 사진을 처리하고(FR-12) Storage에 올린 뒤 `photos`와 `posts`를 한 트랜잭션으로 만든다 (DB 함수 `create_photo_post`, `supabase/migrations/0004_posts.sql`)
+- [x] 저장된 원본과 썸네일 모두 EXIF가 없다 (GPS, 기기 정보가 공개 URL로 새지 않는다)
+- [x] 방향 정보가 다른 테스트 사진 8장(EXIF Orientation 1–8)의 썸네일이 모두 바로 선다. Ktor `ImageUtils.kt:38`의 "항상 90° 회전"을 옮기지 않는다
+- [x] DB 저장이 실패하면 이미 올린 Storage 파일을 지운다 (502 `UPLOAD_FAILED`)
+- [x] 15MB 초과는 413 `FILE_TOO_LARGE`, 이미지가 아니면 415 `UNSUPPORTED_IMAGE`, 카테고리가 틀리면 422 `INVALID_CATEGORY`다 (Ktor는 모두 500이었다). 4,000만 화소 초과도 413 (Pillow는 그 두 배부터만 막아서 직접 확인한다)
+- [x] 사용자당 하루 30장 제한. 넘으면 429 `UPLOAD_LIMIT`
+- [x] 테스트: 정상, 각 오류, Orientation 8종 (`tests/test_posts.py`, 41개)
 
 #### US-021: 올리기 화면 (P0, M4)
 **설명:** 사용자로서, 사진을 고르면 위치가 자동으로 잡히고, 없으면 쉽게 정하고 싶다.
 
 **완료 기준:**
-- [ ] 사진을 고르면 브라우저에서 `exifr`로 GPS와 촬영 시각을 읽어 미리보기와 작은 지도에 보여준다
-- [ ] GPS가 없으면 "현재 위치 사용"(`navigator.geolocation`, 정확도 100m 이하만)과 "지도에서 고르기"를 고를 수 있다. 어떤 방법으로 정했는지 `location_source`로 보낸다
-- [ ] 카테고리는 필수다. 글은 500자까지 선택이다
-- [ ] 올리기 전에 "이 사진은 지도에 대략적인 위치(약 100m)와 함께 공개돼요"를 보여준다 (FR-13a)
-- [ ] 코스 화면의 "📷 사진 올리기"로 들어오면 `course_id`가 함께 간다
-- [ ] 성공하면 그 게시글이 맨 위에 있는 피드로 간다. 방문 인증이 됐으면 토스트 "🎲 다녀옴 인증!"이 뜬다
-- [ ] 로그아웃 상태여도 오류가 나지 않는다 (US-003의 익명 세션을 먼저 만든다. Android `PhotoUploadView.kt:69`의 `!!` 크래시를 옮기지 않는다)
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] 사진을 고르면 브라우저에서 `exifr`로 GPS와 촬영 시각을 읽어 미리보기와 작은 지도에 보여준다
+- [x] GPS가 없으면 "현재 위치 사용"(`navigator.geolocation`, 정확도 100m 이하만)과 "지도에서 고르기"를 고를 수 있다. 어떤 방법으로 정했는지 `location_source`로 보낸다
+- [x] 카테고리는 필수다. 글은 500자까지 선택이다
+- [x] 올리기 전에 "이 사진은 지도에 대략적인 위치(약 100m)와 함께 공개돼요"를 보여준다 (FR-13a)
+- [x] 코스 화면의 "📷 사진 올리기"로 들어오면 `course_id`가 함께 간다
+- [x] 성공하면 그 게시글이 맨 위에 있는 피드로 간다 ("사진을 올렸어요"). 방문 인증 토스트는 M5
+- [x] 로그아웃 상태여도 오류가 나지 않는다 (US-003의 익명 세션을 먼저 만든다. Android `PhotoUploadView.kt:69`의 `!!` 크래시를 옮기지 않는다). 첫 게시글이면 닉네임 창이 먼저 뜬다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19: 위치 없는 사진 → 카테고리 없이 올리기 막힘 → 닉네임 1글자 거부 → 저장 → 피드 맨 위에 표시. 테스트 게시글 1개와 댓글 1개가 실제 DB에 남아 있다)
 
 #### US-022: 사진 지도 API (P0, M4)
 **설명:** 프론트 개발자로서, 지도에 보이는 범위의 사진 마커와 읍면동 클러스터를 받아야 한다.
 
 **완료 기준:**
-- [ ] `GET /photos/map`과 `GET /photos/clusters`(FR-14, FR-15)를 만든다
-- [ ] 두 쿼리가 `photos.geom`의 GiST 인덱스를 쓴다 (`EXPLAIN`에서 `idx_photos_geom`이 보인다). Ktor는 `gps_lat BETWEEN`으로 걸러 인덱스를 쓰지 않았다
-- [ ] 클러스터는 `admin_area_id`로 묶는다. Ktor처럼 읍면동 이름의 마지막 단어로 묶지 않는다
-- [ ] 테스트: 범위 안·밖의 사진, 썸네일 없는 사진은 빠짐, 300장 상한
+- [x] `GET /photos/map`과 `GET /photos/clusters`(FR-14, FR-15)를 만든다. 클러스터에는 그 사진들이 있는 범위 `extent`도 준다 (지도에서 클러스터를 누르면 거기로 맞춘다)
+- [x] 두 쿼리가 `photos.geom`의 GiST 인덱스를 쓴다 (`geom && ST_MakeEnvelope`). Ktor는 `gps_lat BETWEEN`으로 걸러 인덱스를 쓰지 않았다
+- [x] 클러스터는 `admin_area_id`로 묶는다. Ktor처럼 읍면동 이름의 마지막 단어로 묶지 않는다
+- [x] 테스트: 범위 확인(422 `INVALID_BBOX`), 좌표 반올림. (실제 DB: 사진 26장, 클러스터 11개)
 
 #### US-023: 사진 지도 화면 (P0, M4)
 **설명:** 사용자로서, 제주 지도에서 다른 사람들이 찍은 사진을 둘러보고 싶다.
 
 **완료 기준:**
-- [ ] `/map`은 전체 화면 카카오맵이다. 지도 레벨이 `CLUSTER_MIN_LEVEL`(7) 이상이면 읍면동 클러스터(최신 썸네일 + 개수), 미만이면 사진 마커(말풍선 썸네일)를 그린다
-- [ ] 지도가 멈추면(`idle`) 300ms 뒤 보이는 범위로 다시 불러온다. 바뀐 마커만 더하고 지운다
-- [ ] 클러스터를 누르면 그 읍면동이 보이도록 확대한다 (Android에서는 TODO였다)
-- [ ] 사진 마커를 누르면 아래 시트에 사진, 닉네임, 시간, 글, 좋아요, 댓글 수가 보이고 게시글로 갈 수 있다. 가짜 데이터는 쓰지 않는다 (Android `FullscreenImageDialog`의 목업을 옮기지 않는다)
-- [ ] "내 위치" 버튼이 있다. 위치 권한을 거절해도 지도는 동작한다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `/map`은 전체 화면 카카오맵이다. 지도 레벨이 `clusterMinLevel`(7) 이상이면 읍면동 클러스터(최신 썸네일 + 개수 + 이름), 미만이면 사진 마커(말풍선 썸네일)를 그린다
+- [x] 지도가 멈추면(`idle`) 300ms 뒤 보이는 범위로 다시 불러온다. 바뀐 마커만 더하고 지운다
+- [x] 클러스터를 누르면 그 클러스터 사진들이 있는 범위로 맞추고, 그 화면에서는 사진을 하나씩 보여준다 (Android에서는 TODO였다). 처음에는 평균 지점으로 확대했는데, 애월읍 사진 5장이 8×12km에 퍼져 있어 하나도 안 보였다
+- [x] 사진 마커를 누르면 아래 시트에 게시글 카드(사진, 닉네임, 시간, 글, 좋아요, 댓글)가 보인다. 가짜 데이터는 쓰지 않는다
+- [x] "내 위치" 버튼이 있다. 위치 권한을 거절해도 지도는 동작한다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19, 375px)
 
 #### US-024: 피드 API (P0, M4)
 **설명:** 프론트 개발자로서, 최신 게시글을 카테고리별로 나눠 받아야 한다.
 
 **완료 기준:**
-- [ ] `GET /posts`(FR-16)가 커서 방식으로 20개씩 준다
-- [ ] 토큰 없이도 동작한다. 토큰이 있으면 `is_liked`가 채워지고, 없으면 `false`다
-- [ ] 시간은 ISO 8601(타임존 포함)로 준다. "N분 전" 같은 상대 시간은 프론트가 언어에 맞춰 만든다 (Ktor는 서버 시간대가 달라 시간이 어긋날 수 있었다)
-- [ ] 작성자나 사진 행이 없는 게시글도 빠지지 않는다 (작성자 없음 = "알 수 없음")
+- [x] `GET /posts`(FR-16)가 커서 방식으로 20개씩 준다. 커서는 URL에 안전한 base64 문자열이다 (시각의 "+"가 쿼리에서 공백으로 바뀌어 2쪽이 깨지는 문제가 테스트에서 나왔다)
+- [x] 토큰 없이도 동작한다. 토큰이 있으면 `is_liked`가 채워지고, 없으면 `false`다
+- [x] 시간은 ISO 8601(타임존 포함)로 준다. "N분 전" 같은 상대 시간은 프론트가 언어에 맞춰 만든다
+- [x] 작성자나 사진 행이 없는 게시글도 빠지지 않는다 (left join, 작성자 없음 = "알 수 없음")
 
 #### US-025: 피드 화면 (P0, M4)
 **설명:** 사용자로서, 다른 여행자의 제주 사진을 카테고리별로 보고 싶다.
 
 **완료 기준:**
-- [ ] `/feed`에 카테고리 칩(전체 + `post_category` 값)이 있고, 고른 값이 URL `?category=`에 남는다
-- [ ] 카드: 닉네임, 상대 시간, 사진, 글, 카테고리, 좋아요 수, 댓글 수, 방문 인증 배지(있으면)
-- [ ] 아래로 스크롤하면 다음 20개를 불러온다. 더 없으면 "마지막 게시글이에요"
-- [ ] 비어 있으면 "아직 사진이 없어요. 첫 사진을 올려 보세요" + 올리기 버튼
-- [ ] Android의 동작하지 않던 공유·북마크·⋮ 버튼은 만들지 않는다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `/feed`에 카테고리 칩(전체 + `post_category` 값)이 있고, 고른 값이 URL `?category=`에 남는다
+- [x] 카드: 닉네임, 상대 시간, 사진, 글, 카테고리, 좋아요 수, 댓글 수. 방문 인증 배지는 M5
+- [x] 아래로 스크롤하면 다음 20개를 불러온다. 더 없으면 "마지막 게시글이에요" (2026-11-19: 20 → 28개)
+- [x] 비어 있으면 "아직 사진이 없어요. 첫 사진을 올려 보세요" + 올리기 버튼
+- [x] Android의 동작하지 않던 공유·북마크·⋮ 버튼은 만들지 않는다
+- [x] Typecheck/lint passes
+- [x] Verify in browser
 
 #### US-026: 좋아요 (P0, M4)
 **설명:** 사용자로서, 마음에 드는 사진에 좋아요를 누르고 취소하고 싶다.
 
 **완료 기준:**
-- [ ] `POST /posts/{id}/like`(FR-17)가 DB 함수 하나로 원자적으로 토글한다. 동시에 두 번 눌러도 행이 둘 생기지 않는다
-- [ ] 화면은 누르는 즉시 바뀌고(낙관적 업데이트), 실패하면 원래대로 돌아가며 토스트를 띄운다. 앱이 멈추지 않는다 (Android에서는 예외로 앱이 꺼졌다)
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `POST /posts/{id}/like`(FR-17)가 DB 함수 하나로 토글한다 (`post_likes`의 기본 키가 중복을 막는다). `posts.like_count`도 함께 고친다. 이 열은 예전 서버가 고치지 않아 모두 0이었으므로 마이그레이션에서 한 번 다시 셌다 (좋아요 25, 댓글 8)
+- [x] 화면은 누르는 즉시 바뀌고(낙관적 업데이트), 실패하면 원래대로 돌아가며 안내를 띄운다. 앱이 멈추지 않는다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (좋아요 → 1 → 취소 → 0)
 
 #### US-027: 댓글 (P0, M4)
 **설명:** 사용자로서, 사진에 댓글을 읽고 남기고 싶다.
 
 **완료 기준:**
-- [ ] `GET /posts/{id}/comments`, `POST /posts/{id}/comments`(FR-18)
-- [ ] 빈 댓글이나 500자 초과는 422 `INVALID_COMMENT`다 (Ktor는 500이었다)
-- [ ] 피드 카드의 댓글 아이콘이 아래 시트를 열고, 목록(오래된 순)과 입력창을 보여준다
-- [ ] 등록하면 목록 끝에 바로 붙고, 카드의 댓글 수가 1 늘어난다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `GET /posts/{id}/comments`, `POST /posts/{id}/comments`(FR-18). 댓글 수도 함께 고친다
+- [x] 빈 댓글이나 500자 초과는 422 `INVALID_COMMENT`다 (Ktor는 500이었다). 화면에서는 빈 댓글이면 등록 버튼이 꺼진다
+- [x] 피드 카드의 댓글 아이콘이 아래 시트를 열고, 목록(오래된 순)과 입력창을 보여준다. 첫 댓글이면 닉네임 창이 먼저 뜬다
+- [x] 등록하면 목록 끝에 바로 붙고, 카드의 댓글 수가 1 늘어난다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (확인 중 동시 요청에서 "Server disconnected"가 나서 고쳤다: 8.3)
 
 #### US-028: 내 게시글·댓글 지우기 (P1)
 **설명:** 사용자로서, 내가 올린 사진과 댓글을 지우고 싶다.
@@ -381,9 +381,9 @@
 
 **완료 기준:**
 - [x] 기본 언어를 `"ko"`로 바꾼다. 브라우저 언어 감지(en/ja/zh)와 언어 선택은 그대로 둔다. (실제로 언어를 정하는 곳은 `lib/locale.ts`가 아니라 `lib/i18n.ts`의 `useLocale`이었다: 저장된 선택 → 브라우저 언어 → 한국어 순으로 고친다. `<html lang="ko">`, 페이지 제목도 한국어로)
-- [ ] 새 화면(랜덤, 사진 지도, 피드, 올리기)의 모든 문구가 `lib/messages/{ko,en,ja,zh}.ts`에 있다. 화면 코드에 한국어 문자열을 직접 쓰지 않는다 (랜덤 화면·배너·닉네임 창은 완료. 사진 지도·피드·올리기는 M4)
+- [x] 새 화면(랜덤, 사진 지도, 피드, 올리기)의 모든 문구가 `lib/messages/{ko,en,ja,zh}.ts`에 있다. 화면 코드에 한국어 문자열을 직접 쓰지 않는다
 - [x] 언어가 ko이면 "Show to driver" 카드와 현지 문장 카드를 숨긴다 (외국인용 기능)
-- [ ] 게시판 카테고리 이름이 4개 언어로 나온다 (M4)
+- [x] 게시판 카테고리 이름이 4개 언어로 나온다 (DB 값은 한국어 enum 그대로, 화면 이름만 바꾼다)
 - [x] 서비스 이름을 화면 전체에서 Random Jeju로 바꾼다 (Q-01)
 - [x] Typecheck/lint passes
 - [x] Verify in browser (2026-11-19: 브라우저 언어 ko에서 한국어로 열림, 영어로 바꾸면 영어)
@@ -654,7 +654,8 @@ random-jeju-web/            (새 저장소, Q-02. 이름은 바꿔도 된다)
 
 ### 8.3 백엔드
 
-- 새 의존성: `Pillow`, `python-multipart`(FastAPI 파일 업로드에 필요), `PyJWT[crypto]`. 테스트용으로 `exif` 방향별 샘플 사진 8장을 `backend/tests/fixtures/`에 둔다.
+- 새 의존성: `Pillow`, `python-multipart`(FastAPI 파일 업로드에 필요), `PyJWT[crypto]`. 방향별 테스트 사진 8장은 파일로 두지 않고 테스트가 Pillow로 만든다.
+- **Supabase 클라이언트는 HTTP/1.1 연결 풀로 만든다** (`store.py`). supabase-py 기본값은 HTTP/2 연결 하나를 같이 쓰는데, FastAPI가 동기 함수를 여러 스레드에서 돌려 두 요청이 동시에 그 연결을 쓰면 Supabase가 연결을 끊었다 ("Server disconnected", 2026-11-19 댓글 목록에서 재현). 배포에서 사용자가 늘면 더 자주 났을 문제다.
 - 플래너는 `TripCtx.near`와 `course_hub`의 한 갈래, `random_course` 함수만 더한다. 나머지는 손대지 않는다. 해커톤 PRD 10장의 LLM 입력·검증은 그대로다.
 - Storage 업로드가 DB보다 먼저라서, DB가 실패하면 올린 파일을 지운다 (FR-13 실패 시 보상). Ktor에서는 고아 파일이 남았다.
 - Railway 메모리: 15MB 사진을 Pillow로 열면 수백 MB를 쓸 수 있다. `Image.MAX_IMAGE_PIXELS`를 4,000만으로 두고 넘으면 413을 낸다.

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { RandomMap } from "@/components/RandomMap";
+import { TabBar, TabBarSpacer } from "@/components/TabBar";
 import { V9Header } from "@/components/V9Header";
 import { ApiError, api } from "@/lib/api";
 import { AuthError } from "@/lib/auth";
@@ -154,8 +155,10 @@ export default function RandomPage() {
             </div>
           )}
           {error && <p role="alert" className="mt-4 rounded-xl bg-[#fdecea] px-4 py-3 text-sm font-semibold text-[#b3261e]">{error}</p>}
+          <TabBarSpacer />
         </section>
       </div>
+      <TabBar />
     </main>
   );
 }

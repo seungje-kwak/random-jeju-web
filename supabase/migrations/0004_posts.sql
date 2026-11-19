@@ -84,10 +84,14 @@ as $$
 $$;
 
 -- FR-15: one cluster per eup/myeon/dong (admin_area_id, not the last word of the name as before).
+-- The extent (min/max of its photos) lets a tap on the cluster zoom to where its photos actually are:
+-- zooming to the average point showed none of Aewol's 5 spread-out photos (2026-11-19).
+drop function if exists photo_clusters(double precision, double precision, double precision, double precision);
 create or replace function photo_clusters(min_lat double precision, min_lng double precision,
                                           max_lat double precision, max_lng double precision)
 returns table (admin_area_id integer, name text, count integer, lat double precision, lng double precision,
-               thumb_path text)
+               thumb_path text, south double precision, west double precision, north double precision,
+               east double precision)
 language sql stable
 set search_path = public, extensions
 as $$
@@ -100,7 +104,8 @@ as $$
   select i.admin_area_id,
          (regexp_split_to_array(max(a.adm_nm), ' '))[array_length(regexp_split_to_array(max(a.adm_nm), ' '), 1)],
          count(*)::integer, avg(i.gps_lat), avg(i.gps_lng),
-         (array_agg(i.thumb_path order by i.created_at desc))[1]
+         (array_agg(i.thumb_path order by i.created_at desc))[1],
+         min(i.gps_lat), min(i.gps_lng), max(i.gps_lat), max(i.gps_lng)
     from inbox i join admin_areas a on a.gid = i.admin_area_id
    group by i.admin_area_id
    order by count(*) desc;
