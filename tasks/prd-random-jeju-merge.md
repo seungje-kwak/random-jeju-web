@@ -149,9 +149,10 @@
 **설명:** 개발자로서, 새 스택이 Vercel·Railway·Supabase A로 자동 배포되게 하고 싶다.
 
 **완료 기준:**
-- [ ] Railway 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`(A), `ALLOWED_ORIGINS`(새 Vercel 주소), 기존 LLM 변수
-- [ ] Vercel 환경 변수: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] CORS가 `Authorization` 헤더와 `DELETE` 메서드를 허용한다
+- [x] 두 서비스를 GitHub `main`에 연결해 push마다 자동 배포한다 (2026-11-19). Vercel 프로젝트 `random-jeju-web`(Root Directory `frontend`) → https://random-jeju-web.vercel.app. Railway 프로젝트 `elegant-perception`(Root Directory `backend`, `Procfile`). 커밋 `ee931cf`가 두 곳 모두 성공했다. 그 앞 `2831084`는 Railway 첫 빌드가 실패하고 재시도에서 성공했다 (원인은 Railway 로그로 아직 보지 않았다)
+- [ ] Railway 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`(A), `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`(`https://random-jeju-web.vercel.app`), 기존 LLM 변수. Railway 공개 주소를 아직 몰라 확인하지 못했다
+- [ ] Vercel 환경 변수: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. 2026-11-19 배포본을 보면 Supabase(A) 주소, anon 키, 카카오 키는 빌드에 들어갔고 **`NEXT_PUBLIC_API_URL`은 빠졌다**. 그래서 배포된 화면이 `http://localhost:8000`을 부르고, 다른 컴퓨터에서는 굴리기·피드·올리기가 동작하지 않는다. `NEXT_PUBLIC_*`는 빌드 때 코드에 박히므로, 값을 넣은 뒤 다시 빌드(Redeploy 또는 새 push)해야 한다
+- [x] CORS가 `Authorization` 헤더와 `DELETE` 메서드를 허용한다 (`backend/app/main.py`: `allow_headers=["*"]`, `allow_methods`에 `DELETE`)
 - [ ] 카카오 개발자 콘솔의 JavaScript 키에 로컬 주소와 Vercel 주소를 사이트 도메인으로 등록한다
 - [ ] `GET /`의 응답으로 배포된 백엔드가 Supabase A를 보고 있음을 확인한다
 

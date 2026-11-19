@@ -15,7 +15,7 @@ data/                  장소 시드 CSV, 데모 코스
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| M0 | 저장소 만들기, RLS 긴급 조치, DB 비밀번호 교체, Vercel·Railway 연결 | 저장소·RLS·비밀번호 완료 (2026-11-19). Vercel·Railway 연결 남음 |
+| M0 | 저장소 만들기, RLS 긴급 조치, DB 비밀번호 교체, Vercel·Railway 연결 | 저장소·RLS·비밀번호 완료 (2026-11-19). Vercel·Railway 연결·자동 배포 완료 (2026-11-19). 남음: 아래 "배포"의 남은 일 |
 | M1 | 해커톤 스키마·장소 데이터를 RandomJeju Supabase로 | 완료 (2026-11-19). 배포 환경 변수(US-005)는 Vercel·Railway 연결 뒤 |
 | M2 | 익명 세션, 토큰 검증 | 완료 (2026-11-19) |
 | M3 | 랜덤 지점 + 주변 코스 | 완료 (2026-11-19). `/random` 화면, 랜덤 코스, 한국어 기본, 유료 잠금 끔. 배포 환경의 응답 시간 측정은 Vercel·Railway 연결 뒤 |
@@ -23,6 +23,24 @@ data/                  장소 시드 CSV, 데모 코스
 | M5 | 방문 인증 | 완료 (2026-11-19). 랜덤 지점 500m·장소 200m(넓은 장소 500m)·7일 안의 사진이면 "다녀옴" 인증, 코스·여행 모드·피드에 표시 |
 | M6 | 한국어 완성 | 완료 (2026-11-19). 장소 1,065곳 한국어 소개(검수 66, LLM 번역 999), 추천 이유·빈 식사 시간 문구 한국어 |
 | M7 | Ktor 서버 종료 | 완료 (2026-11-19). Cloud Run 공개 호출 차단(403, 되돌릴 수 있음), 시간 열 `timestamptz` 변환, Android용 정책 12개 삭제. Supabase B는 해커톤 웹앱용으로 그대로 둔다 |
+
+## 배포
+
+`main`에 push하면 두 곳이 자동으로 배포한다 (PRD US-005).
+
+| 서비스 | 설정 | 주소 |
+|---|---|---|
+| Vercel (`random-jeju-web`) | Root Directory `frontend`. 변수 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_KAKAO_MAP_KEY` | https://random-jeju-web.vercel.app |
+| Railway (`elegant-perception`) | Root Directory `backend`, `Procfile`로 uvicorn 실행. 변수 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`, LLM 변수 | 기록 안 됨 |
+
+`NEXT_PUBLIC_*` 값은 빌드할 때 코드에 박힌다. Vercel에서 값을 바꾸면 다시 빌드해야 적용된다.
+
+2026-11-19 상태: 커밋 `ee931cf`가 두 곳 모두 배포에 성공했다. 남은 일:
+
+1. Vercel에 `NEXT_PUBLIC_API_URL`(Railway 공개 주소)을 넣고 다시 빌드한다. 지금 배포본에는 이 값이 없어 화면이 `http://localhost:8000`을 부른다
+2. Railway의 `ALLOWED_ORIGINS`에 `https://random-jeju-web.vercel.app`을 넣는다
+3. 카카오 개발자 콘솔의 JavaScript 키에 `https://random-jeju-web.vercel.app`을 사이트 도메인으로 등록한다
+4. 배포된 백엔드의 `GET /`와 굴리기 → 코스 → 올리기 → 인증 흐름을 확인하고, Railway 공개 주소를 이 표에 적는다
 
 ## 마이그레이션
 
