@@ -56,6 +56,11 @@ class Store(Protocol):
     def nicknames(self, user_ids: list[str]) -> dict[str, Optional[str]]: ...
     def photos_in_bbox(self, box: dict, limit: int) -> list[dict]: ...
     def photo_clusters(self, box: dict) -> list[dict]: ...
+    # visit check-ins (FR-19 - FR-21)
+    def recent_owned_courses(self, user_id: str, since_utc: str) -> list[dict]: ...
+    def add_visit(self, user_id: str, course_id: str, kind: str, place_id: Optional[int],
+                  location_id: Optional[int], post_id: str) -> dict: ...
+    def course_visits(self, course_id: str) -> list[dict]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +292,20 @@ class SupabaseStore:
 
     def photo_clusters(self, box: dict) -> list[dict]:
         return self._sb.rpc("photo_clusters", box).execute().data
+
+    # --- visit check-ins (FR-19 - FR-21; functions in 0005_visits.sql) ---
+    def recent_owned_courses(self, user_id: str, since_utc: str) -> list[dict]:
+        return (self._sb.table("courses").select("id, created_at, origin_location_id, kind, owner_id")
+                .eq("owner_id", user_id).gte("created_at", since_utc).order("created_at", desc=True)
+                .limit(30).execute().data)
+
+    def add_visit(self, user_id, course_id, kind, place_id, location_id, post_id) -> dict:
+        return self._sb.rpc("add_visit", {"p_user": user_id, "p_course": course_id, "p_kind": kind,
+                                          "p_place": place_id, "p_location": location_id,
+                                          "p_post": post_id}).execute().data[0]
+
+    def course_visits(self, course_id: str) -> list[dict]:
+        return self._sb.rpc("course_visits", {"p_course": course_id}).execute().data
 
 
 _store: Optional[Store] = None

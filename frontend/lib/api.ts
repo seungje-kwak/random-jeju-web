@@ -1,7 +1,7 @@
 // The frontend only talks to FastAPI (1.3). Base URL comes from NEXT_PUBLIC_API_URL.
 import { accessToken, existingToken, refreshedToken } from "./auth";
 import type {
-  Area, Comment, Course, FeedPage, Me, Place, PhotoCluster, PhotoMarker, Post, PostCategory, PostMeta, RandomPoint,
+  Area, CheckIn, Comment, Course, FeedPage, Me, Place, PhotoCluster, PhotoMarker, Post, PostCategory, PostMeta, RandomPoint,
   ReplanReason, UserProfileInput,
 } from "./types";
 
@@ -122,7 +122,7 @@ export const api = {
     const form = new FormData();
     form.append("image", image, "photo.jpg");
     form.append("meta", JSON.stringify(meta));
-    return authedRequest<{ post: Post; visit: Post["visit"] }>("/posts", { method: "POST", body: form });
+    return authedRequest<{ post: Post; visit: CheckIn | null; visits: CheckIn[] }>("/posts", { method: "POST", body: form });
   },
   like: (id: string) =>
     authedRequest<{ liked: boolean; like_count: number }>(`/posts/${encodeURIComponent(id)}/like`, { method: "POST" }),

@@ -267,7 +267,13 @@ export default function TripPage() {
             size="large"
             status="current"
             isNew={newKeys.has(`${current.order}:${current.place_id}`)}
+            visit={course.visits.find((v) => v.kind === "course_place" && v.place_id === current.place_id)}
           >
+            {/* tasks/prd-random-jeju-merge.md US-021: a photo taken here checks the stop in (FR-20) */}
+            <Link href={`/upload?course_id=${encodeURIComponent(course.id)}`}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 font-semibold">
+              📷 {M.social.uploadFromCourse}
+            </Link>
             <PrimaryButton className="mt-3 w-full" onClick={next} disabled={busy}>
               {after ? T.doneNext : T.doneLast}
             </PrimaryButton>

@@ -165,3 +165,11 @@ UPLOADS_PER_DAY = 30
 POST_CONTENT_MAX = 500
 COMMENT_MAX = 500
 FEED_PAGE = 20
+
+# --- visit check-ins (tasks/prd-random-jeju-merge.md FR-19 - FR-21, Q-08) ---
+VISIT_RADIUS_RANDOM_M = 500         # photo within this of the course's random point
+VISIT_RADIUS_PLACE_M = 200          # ... or of one of its stops
+VISIT_RADIUS_WIDE_M = 500           # stops that are wide areas (one point cannot stand for all of them)
+VISIT_WIDE_TYPES = ("beach", "oreum_hike", "park", "forest", "waterfall", "nature")
+VISIT_WINDOW_DAYS = 7               # only courses made in the last 7 days
+VISIT_CLOCK_LEEWAY_MIN = 10         # a camera clock a few minutes behind the server still counts

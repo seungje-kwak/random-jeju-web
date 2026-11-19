@@ -452,6 +452,11 @@ export const en = {
     errGeneric: "Couldn't post the photo. Please try again.",
     posted: "Photo posted",
     fromCourse: "Posting a photo from your course",
+    visitedRandom: "🎲 Visited the random spot",
+    visitedPlace: (name: string) => `📍 Visited ${name}`,
+    visitedStop: "Visited",
+    conquered: "You made it to the random spot!",
+    checkedIn: "Checked in: you were really there!",
     uploadFromCourse: "Post a photo",
   },
 

@@ -96,7 +96,8 @@ export default function UploadPage() {
       const meta: PostMeta = { category, content: text.trim() || undefined, taken_at: takenAt, course_id: courseId ?? undefined };
       if (spot) Object.assign(meta, { lat: spot.lat, lng: spot.lng, location_source: spot.source });
       const r = await api.createPost(file, meta);
-      router.push(`/feed?posted=${encodeURIComponent(r.post.post_id)}`);
+      // US-021: the feed says "checked in" when this photo checked in at the traveler's course (FR-20)
+      router.push(`/feed?posted=${encodeURIComponent(r.post.post_id)}${r.visit ? "&checkin=1" : ""}`);
     } catch (err) {
       const code = err instanceof ApiError ? err.code : null;
       setStatus("error");

@@ -56,6 +56,14 @@ export function PostCard({ post, onChange, priority = false }: {
         </span>
         <span className="rounded-full bg-[#eff5f2] px-2.5 py-1 text-xs font-bold text-[#1f5a52]">#{t.categories[post.category]}</span>
       </header>
+      {post.visit && (
+        // US-031: the photo checked in at its author's course
+        <p className="mx-4 mb-2 inline-flex rounded-full bg-[#fff4d6] px-3 py-1 text-xs font-bold text-[#7a5a00]">
+          {post.visit.kind === "random_point"
+            ? t.visitedRandom
+            : t.visitedPlace((locale === "ko" ? post.visit.place_name_ko : post.visit.place_name_en || post.visit.place_name_ko) ?? "")}
+        </p>
+      )}
       {post.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={post.image_url} alt={post.content || t.categories[post.category]} loading={priority ? "eager" : "lazy"}

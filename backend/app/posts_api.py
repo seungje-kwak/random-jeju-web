@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from pydantic import BaseModel
 
 from . import config
+from . import visits as visits_mod
 from .auth import User, current_user, optional_user
 from .errors import ApiError
 from .photos import process_image, public_coord, public_url, taken_at_kst
@@ -45,8 +46,56 @@ def post_out(row: dict, liked: bool, me: Optional[User]) -> dict:
         "like_count": row.get("like_count") or 0,
         "comment_count": row.get("comment_count") or 0,
         "is_liked": liked,
-        "visit": None,                  # check-ins come in M5
+        # US-031 badge: the post's check-in, the random point first (feed_posts picks it)
+        "visit": None if not row.get("visit_kind") else {
+            "kind": row["visit_kind"], "place_name_ko": row.get("visit_place_name_ko"),
+            "place_name_en": row.get("visit_place_name_en")},
     }
+
+
+def record_visits(user: User, meta: dict, post_id: str) -> list[dict]:
+    """FR-19 - FR-21 after a post is saved. A check-in is a bonus: if anything here fails, the post stands
+    and the traveler just gets no check-in (logged)."""
+    if meta["lat"] is None or meta["source"] not in visits_mod.COUNTED_SOURCES:
+        return []
+    store = get_store()
+    try:
+        now = datetime.now(timezone.utc)
+        if meta["course_id"]:
+            c = store.get_course(meta["course_id"]) if _is_uuid(meta["course_id"]) else None
+            rows = [c] if c and c.get("owner_id") == user.id else []
+        else:
+            since = (now - timedelta(days=config.VISIT_WINDOW_DAYS)).isoformat()
+            rows = store.recent_owned_courses(user.id, since)
+        if not rows:
+            return []
+        by_id = {p["id"]: p for p in store.list_places()}
+        facts = []
+        for c in rows:
+            origin = store.get_location(c["origin_location_id"]) if c.get("origin_location_id") else None
+            stops = [by_id[i["place_id"]] for i in store.get_items(c["id"]) if i["place_id"] in by_id]
+            facts.append(visits_mod.CourseFacts(c["id"], visits_mod.parse_time(c["created_at"]), origin, stops))
+        found = visits_mod.judge(meta["lat"], meta["lng"], meta["source"], meta["taken_at"], facts, now)
+        out = []
+        for cand in found:
+            v = store.add_visit(user.id, cand.course_id, cand.kind, cand.place_id, cand.location_id, post_id)
+            place = by_id.get(cand.place_id) if cand.place_id else None
+            out.append({"kind": cand.kind, "course_id": cand.course_id, "place_id": cand.place_id,
+                        "place_name_ko": place["name_ko"] if place else None,
+                        "place_name_en": place["name_en"] if place else None,
+                        "is_new": bool(v.get("is_new"))})
+        return sorted(out, key=lambda v: v["kind"] != "random_point")
+    except Exception:
+        log.exception("visit check failed for post %s", post_id)
+        return []
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False
 
 
 def _one_post(post_id: str) -> dict:
@@ -121,7 +170,10 @@ def create_post(image: UploadFile = File(...), meta: str = Form(...), user: User
             except Exception:
                 log.exception("could not remove %s", uploaded)
         raise ApiError(502, "UPLOAD_FAILED", "Could not save the photo. Please try again.")
-    return {"post": post_out(_one_post(made["post_id"]), False, user), "visit": None}
+    found = record_visits(user, m, made["post_id"])
+    # `visit`: the first check-in (the random point before a stop); `visits`: all of them
+    return {"post": post_out(_one_post(made["post_id"]), False, user), "visit": found[0] if found else None,
+            "visits": found}
 
 
 # --- feed (FR-16) ---------------------------------------------------------------------------------------

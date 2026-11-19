@@ -409,6 +409,11 @@ export const ko: Messages = {
     errGeneric: "사진을 올리지 못했어요. 다시 시도해 주세요.",
     posted: "사진을 올렸어요",
     fromCourse: "코스에서 찍은 사진으로 올려요",
+    visitedRandom: "🎲 랜덤 지점 다녀옴",
+    visitedPlace: (name) => `📍 ${name} 다녀옴`,
+    visitedStop: "다녀옴",
+    conquered: "랜덤 지점 정복!",
+    checkedIn: "다녀옴 인증!",
     uploadFromCourse: "사진 올리기",
   },
 

@@ -408,6 +408,11 @@ export const zh: Messages = {
     errGeneric: "照片发布失败，请重试。",
     posted: "照片已发布",
     fromCourse: "作为行程中拍的照片发布",
+    visitedRandom: "🎲 去过随机地点",
+    visitedPlace: (name) => `📍 去过 ${name}`,
+    visitedStop: "已到访",
+    conquered: "随机地点打卡成功！",
+    checkedIn: "打卡成功！",
     uploadFromCourse: "发布照片",
   },
 

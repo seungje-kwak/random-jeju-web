@@ -28,13 +28,16 @@ export default function FeedPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [load, setLoad] = useState<Load>("idle");
-  const [posted, setPosted] = useState(false);
+  const [posted, setPosted] = useState<"" | "posted" | "checkedIn">("");
   const generation = useRef(0);
   const sentinel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCategory(categoryFromUrl());
-    try { setPosted(new URLSearchParams(window.location.search).has("posted")); } catch { /* no toast */ }
+    try {
+      const q = new URLSearchParams(window.location.search);
+      setPosted(q.has("checkin") ? "checkedIn" : q.has("posted") ? "posted" : "");
+    } catch { /* no toast */ }
   }, []);
 
   const loadMore = useCallback(async (reset = false) => {
@@ -64,6 +67,7 @@ export default function FeedPage() {
       const url = new URL(window.location.href);
       if (category) url.searchParams.set("category", category); else url.searchParams.delete("category");
       url.searchParams.delete("posted");
+      url.searchParams.delete("checkin");
       window.history.replaceState(null, "", url.toString());
     } catch { /* URL stays as it was */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,7 +96,11 @@ export default function FeedPage() {
       <TabBar />
       <div className="mx-auto max-w-[620px] px-4 pt-5">
         <h1 className="text-2xl font-extrabold text-[#143136]">{t.feedTitle}</h1>
-        {posted && <p role="status" className="mt-3 rounded-xl bg-[#eff7f3] px-4 py-3 text-sm font-bold text-[#1f5a52]">✓ {t.posted}</p>}
+        {posted && (
+          <p role="status" className="mt-3 rounded-xl bg-[#eff7f3] px-4 py-3 text-sm font-bold text-[#1f5a52]">
+            {posted === "checkedIn" ? `🎲 ${t.checkedIn}` : `✓ ${t.posted}`}
+          </p>
+        )}
         <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={t.category}>
           {chip(null, t.all)}
           {POST_CATEGORIES.map((c) => chip(c, t.categories[c]))}

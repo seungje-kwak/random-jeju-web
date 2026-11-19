@@ -126,10 +126,13 @@ export function StopCard({
   status,
   selected = false,
   onShowOnMap,
+  visit,
   children,
 }: {
   item: CourseItem;
   tier: Tier;
+  /** tasks/prd-random-jeju-merge.md US-031: this stop was checked in with a photo. */
+  visit?: { thumb_url: string | null };
   diet?: UserProfile["diet"];
   size?: "normal" | "large";
   isNew?: boolean;
@@ -176,6 +179,17 @@ export function StopCard({
             {name !== p.name_ko && (
               <p className="stop-card__korean-name" lang="ko">
                 {p.name_ko}
+              </p>
+            )}
+            {visit && (
+              <p className="mt-1.5 inline-flex items-center gap-2 rounded-full bg-[#e7f6ec] py-1 pl-1 pr-3 text-xs font-bold text-[#1e6b3a]">
+                {visit.thumb_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={visit.thumb_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+                ) : (
+                  <span aria-hidden="true" className="pl-1.5">✅</span>
+                )}
+                ✅ {MESSAGES[locale].social.visitedStop}
               </p>
             )}
           </div>

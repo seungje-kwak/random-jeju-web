@@ -408,6 +408,11 @@ export const ja: Messages = {
     errGeneric: "写真を投稿できませんでした。もう一度お試しください。",
     posted: "写真を投稿しました",
     fromCourse: "旅程で撮った写真として投稿します",
+    visitedRandom: "🎲 ランダム地点に行った",
+    visitedPlace: (name) => `📍 ${name}に行った`,
+    visitedStop: "訪問済み",
+    conquered: "ランダム地点を制覇！",
+    checkedIn: "訪問を記録しました！",
     uploadFromCourse: "写真を投稿",
   },
 

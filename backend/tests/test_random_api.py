@@ -48,6 +48,58 @@ class FakeStore:
     def get_location(self, lid): return copy.deepcopy(self.locations.get(lid))
     def link_location(self, lid, cid): self.locations[lid]["course_id"] = cid
 
+    # --- enough of posts and visits for the check-in tests (M5) ---
+    posts: list
+    visits: list
+
+    def _ensure(self):
+        if not hasattr(self, "visits"):
+            self.posts, self.visits = [], []
+
+    def upload_file(self, bucket, name, data): return f"{bucket}/{name}"
+    def remove_files(self, paths): pass
+    def uploads_since(self, user_id, since): return 0
+
+    def create_photo_post(self, a):
+        self._ensure()
+        pid = str(uuid.uuid4())
+        self.posts.append({"post_id": pid, "user_id": a["p_user"], "nickname": None, "created_at": "2026-11-20T06:00:00+00:00",
+                           "content": None, "category": a["p_category"], "file_path": a["p_file_path"],
+                           "thumb_path": a["p_thumb_path"], "lat": a["p_lat"], "lng": a["p_lng"],
+                           "like_count": 0, "comment_count": 0})
+        return {"post_id": pid, "photo_id": len(self.posts)}
+
+    def feed(self, category, before, before_id, limit, post_id=None):
+        self._ensure()
+        rows = [dict(p) for p in self.posts if post_id is None or p["post_id"] == post_id]
+        for r in rows:
+            v = sorted((v for v in self.visits if v["post_id"] == r["post_id"]), key=lambda v: v["kind"] != "random_point")
+            if v:
+                place = next((p for p in self.places if p["id"] == v[0]["place_id"]), None)
+                r.update(visit_kind=v[0]["kind"], visit_place_name_ko=place and place["name_ko"],
+                         visit_place_name_en=place and place["name_en"])
+        return rows[:limit]
+
+    def liked_post_ids(self, user_id, ids): return set()
+
+    def recent_owned_courses(self, user_id, since):
+        return [dict(c) for c in self.courses.values() if c.get("owner_id") == user_id]
+
+    def add_visit(self, user_id, course_id, kind, place_id, location_id, post_id):
+        self._ensure()
+        same = next((v for v in self.visits if v["course_id"] == course_id and v["kind"] == kind
+                     and (v["place_id"] or 0) == (place_id or 0)), None)
+        if same:
+            return {**same, "is_new": False}
+        v = {"course_id": course_id, "kind": kind, "place_id": place_id, "post_id": post_id}
+        self.visits.append(v)
+        return {**v, "is_new": True}
+
+    def course_visits(self, course_id):
+        self._ensure()
+        return [{**v, "thumb_path": f"thumbnails/{v['post_id']}.jpg", "file_path": None}
+                for v in self.visits if v["course_id"] == course_id]
+
 
 def token(sub: str) -> dict:
     t = jwt.encode({"sub": sub, "role": "authenticated", "aud": "authenticated", "exp": int(time.time()) + 3600,
@@ -164,3 +216,71 @@ def test_paywall_on_keeps_the_three_stop_preview(client, fake, monkeypatch):
                                       "start_time": "10:00", "end_time": "18:00"}).json()
     assert c["tier"] == "free" and len(c["items"]) == min(3, c["total_items"])
     assert c["locked_count"] == c["total_items"] - len(c["items"])
+
+
+# --- M5 visit check-ins (US-030, US-031) ---------------------------------------------------------------
+def _photo() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (40, 30), "white").save(buf, "JPEG")
+    return buf.getvalue()
+
+
+def _post(client, user, lat, lng, source="exif", course_id=None):
+    meta = {"category": "관광", "lat": lat, "lng": lng, "location_source": source}
+    if course_id:
+        meta["course_id"] = course_id
+    return client.post("/posts", headers=token(user), files={"image": ("a.jpg", _photo(), "image/jpeg")},
+                       data={"meta": json.dumps(meta, ensure_ascii=False)})
+
+
+def _random_course(client, user):
+    point = draw(client, user)
+    course = client.post("/random-courses", headers=token(user), json={
+        "location_id": point["location_id"], "user_profile": PROFILE, "start_time": "10:00", "end_time": "18:00"}).json()
+    return point, course
+
+
+def test_photo_at_the_random_point_checks_in_once(client, fake, monkeypatch):
+    monkeypatch.setattr(config, "PAYWALL_ENABLED", False)
+    user = str(uuid.uuid4())
+    point, course = _random_course(client, user)
+    r = _post(client, user, point["lat"] + 0.001, point["lng"])                # about 110 m away
+    assert r.status_code == 201, r.text
+    visit = r.json()["visit"]
+    assert visit["kind"] == "random_point" and visit["course_id"] == course["id"] and visit["is_new"] is True
+    again = _post(client, user, point["lat"], point["lng"]).json()
+    assert again["visit"]["is_new"] is False                                     # FR-21: once per course
+    shown = client.get(f"/courses/{course['id']}").json()["visits"]
+    # the old-town point is also within a stop's radius, so that stop may be checked in too (once each)
+    kinds = [v["kind"] for v in shown]
+    assert kinds.count("random_point") == 1 and kinds.count("course_place") <= 1
+    assert all(v["thumb_url"].endswith(".jpg") for v in shown)
+    feed = client.get("/posts").json()["posts"]
+    assert feed[0]["visit"]["kind"] == "random_point"
+
+
+def test_photo_at_a_stop_checks_in_that_stop(client, fake):
+    user = str(uuid.uuid4())
+    _, course = _random_course(client, user)
+    stop = course["items"][-1]["place"]
+    r = _post(client, user, stop["lat"], stop["lng"], source="device", course_id=course["id"]).json()
+    places = [v for v in r["visits"] if v["kind"] == "course_place"]
+    assert places and places[0]["place_id"] == stop["id"] and places[0]["place_name_ko"] == stop["name_ko"]
+
+
+def test_no_check_in_for_a_picked_spot_or_someone_elses_course(client, fake):
+    user, other = str(uuid.uuid4()), str(uuid.uuid4())
+    point, course = _random_course(client, user)
+    assert _post(client, user, point["lat"], point["lng"], source="manual").json()["visit"] is None
+    assert _post(client, other, point["lat"], point["lng"], course_id=course["id"]).json()["visit"] is None
+    assert _post(client, other, point["lat"], point["lng"]).json()["visit"] is None   # not their course
+
+
+def test_a_failing_check_in_does_not_fail_the_post(client, fake, monkeypatch):
+    user = str(uuid.uuid4())
+    point, _ = _random_course(client, user)
+    monkeypatch.setattr(fake, "add_visit", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db down")))
+    r = _post(client, user, point["lat"], point["lng"])
+    assert r.status_code == 201 and r.json()["visit"] is None

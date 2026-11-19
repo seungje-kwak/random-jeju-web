@@ -33,13 +33,15 @@ const FARE_HELP = {
 // eval (scripts/eval_random.py) has a median of 3.7 km, so 2 km (the first idea) would show on 78% of courses.
 const SNAP_NOTICE_KM = 5;
 
-function RandomBanner({ course, onReroll, state }: {
-  course: Course; onReroll: () => void; state: "idle" | "loading" | "error";
+function RandomBanner({ course, onReroll, state, canReroll }: {
+  course: Course; onReroll: () => void; state: "idle" | "loading" | "error"; canReroll: boolean;
 }) {
   const { locale } = useLocale();
   const R = MESSAGES[locale].random;
+  const S = MESSAGES[locale].social;
   const o = course.random_origin;
   if (!o) return null;
+  const conquered = course.visits.find((v) => v.kind === "random_point");   // US-031
   const hub = locale === "ko" ? o.hub_name_ko : o.hub_name_en || o.hub_name_ko;
   const km = o.snap_km != null ? R.km(o.snap_km) : null;
   return (
@@ -52,10 +54,21 @@ function RandomBanner({ course, onReroll, state }: {
       {hub && km && o.snap_km != null && o.snap_km > SNAP_NOTICE_KM && (
         <p className="mt-2 text-sm text-[var(--muted)]">{R.snapNotice(km, hub)}</p>
       )}
-      <button type="button" className="v9-outline mt-3" onClick={onReroll} disabled={state === "loading"} aria-busy={state === "loading"}>
-        <span className={state === "loading" ? "rj-dice-rolling" : ""} aria-hidden="true">🎲</span>
-        {state === "loading" ? R.rerolling : R.rerollCourse}
-      </button>
+      {conquered && (
+        <p className="mt-3 flex items-center gap-2 rounded-xl bg-[#fff4d6] px-3 py-2 text-sm font-extrabold text-[#7a5a00]">
+          {conquered.thumb_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={conquered.thumb_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+          )}
+          🎲 {S.conquered}
+        </p>
+      )}
+      {canReroll && (
+        <button type="button" className="v9-outline mt-3" onClick={onReroll} disabled={state === "loading"} aria-busy={state === "loading"}>
+          <span className={state === "loading" ? "rj-dice-rolling" : ""} aria-hidden="true">🎲</span>
+          {state === "loading" ? R.rerolling : R.rerollCourse}
+        </button>
+      )}
       {state === "error" && <p role="alert" className="v9-form-error">{R.rerollFailed}</p>}
     </section>
   );
@@ -210,7 +223,7 @@ export default function CoursePage() {
           </div>
           <WindowSummary course={course} />
           <p className="v9-fineprint">{C.timesNote}</p>
-          {course.kind === "random" && notStarted && <RandomBanner course={course} onReroll={rerollDay} state={reroll} />}
+          {course.kind === "random" && <RandomBanner course={course} onReroll={rerollDay} state={reroll} canReroll={notStarted} />}
 
           {canShuffle && (
             <div className="v9-shuffle">
@@ -251,6 +264,7 @@ export default function CoursePage() {
                       diet={course.user_profile.diet}
                       selected={selected === it.order}
                       onShowOnMap={() => showOnMap(it.order, it.place_id)}
+                      visit={course.visits.find((v) => v.kind === "course_place" && v.place_id === it.place_id)}
                     />
                   </li>
                 );

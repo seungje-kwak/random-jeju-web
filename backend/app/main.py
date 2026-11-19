@@ -12,6 +12,7 @@ from . import areas, config, planner, random_spots
 from .auth import User, current_user, optional_user
 from .course_view import build_course
 from .errors import ApiError
+from .photos import public_url
 from .posts_api import router as posts_router
 from .schemas import (CreateCourseRequest, NicknameRequest, PurchaseRequest, RandomCourseRequest, ReplanRequest,
                       ReportRequest)
@@ -44,9 +45,12 @@ def _course_response(course_id: str) -> dict:
     if course is None:
         raise ApiError(404, "COURSE_NOT_FOUND", "Course not found.")
     origin = store.get_location(course["origin_location_id"]) if course.get("origin_location_id") else None
-    # visits (FR-10) come with the check-ins of M5; until then a course has none
+    # FR-10 visits: only a course with an owner can have check-ins (FR-19)
+    visits = [{"kind": v["kind"], "place_id": v.get("place_id"), "post_id": v["post_id"],
+               "thumb_url": public_url(v.get("thumb_path")) or public_url(v.get("file_path"))}
+              for v in store.course_visits(course_id)] if course.get("owner_id") else []
     return build_course(course, store.get_items(course_id), store.list_places(), store.list_phrase_cards(),
-                        origin=origin, visits=[])
+                        origin=origin, visits=visits)
 
 
 @app.get("/")

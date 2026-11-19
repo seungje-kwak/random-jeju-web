@@ -187,10 +187,17 @@ export type Post = {
   like_count: number;
   comment_count: number;
   is_liked: boolean;
-  visit: null | { kind: "random_point" | "course_place"; place_name_ko: string | null };   // M5
+  // US-031 badge: the post's check-in (the random point first)
+  visit: null | { kind: "random_point" | "course_place"; place_name_ko: string | null; place_name_en: string | null };
 };
 
 export type FeedPage = { posts: Post[]; next_cursor: string | null };
+
+/** POST /posts: what the photo checked in (FR-20). is_new false = that spot was already checked in. */
+export type CheckIn = {
+  kind: "random_point" | "course_place"; course_id: string; place_id: number | null;
+  place_name_ko: string | null; place_name_en: string | null; is_new: boolean;
+};
 
 export type Comment = { id: string; author: Author; is_mine: boolean; content: string; created_at: string };
 
