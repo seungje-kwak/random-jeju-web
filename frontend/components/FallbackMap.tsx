@@ -10,8 +10,8 @@ import type { MapRandomPoint, MapSelect } from "./JejuMap";
 const MARKER_PX = 28;
 
 // 7.10: the fallback SVG cannot zoom, so push course markers apart (in px, for the current box width)
-// until they stop overlapping.
-function spread(points: { x: number; y: number }[], widthPx: number) {
+// until they stop overlapping. Also used by RandomMap for the example course under the dice.
+export function spread(points: { x: number; y: number }[], widthPx: number) {
   if (!widthPx || points.length < 2) return points;
   const heightPx = widthPx / MAP_CONFIG.aspectRatio;
   const px = points.map((p) => ({ x: (p.x / 100) * widthPx, y: (p.y / 100) * heightPx }));

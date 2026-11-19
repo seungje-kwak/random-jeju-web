@@ -14,8 +14,8 @@ from .course_view import build_course
 from .errors import ApiError
 from .photos import public_url
 from .posts_api import router as posts_router
-from .schemas import (CreateCourseRequest, NicknameRequest, PurchaseRequest, RandomCourseRequest, ReplanRequest,
-                      ReportRequest)
+from .schemas import (CreateCourseRequest, ExampleCourseRequest, NicknameRequest, PurchaseRequest,
+                      RandomCourseRequest, ReplanRequest, ReportRequest)
 from .store import get_store
 
 logging.basicConfig(level=logging.INFO)
@@ -104,17 +104,48 @@ def draw_random_point(user: User = Depends(current_user)) -> dict:
     return {"location_id": loc["location_id"], "lat": row["lat"], "lng": row["lng"], "adm_nm": adm, **near}
 
 
-@app.post("/random-courses", status_code=201)
-def create_random_course(req: RandomCourseRequest, user: User = Depends(current_user)) -> dict:
-    """FR-9: a day near the traveler's own drawn point. FR-8: no silent second draw on 409."""
-    store = get_store()
-    loc = store.get_location(req.location_id)
+def _own_location(store, location_id: int, user: User) -> dict:
+    loc = store.get_location(location_id)
     if loc is None or loc.get("user_id") != user.id:
         raise ApiError(404, "LOCATION_NOT_FOUND", "That random point was not found.")
+    return loc
+
+
+@app.post("/random-points/{location_id}/example-course")
+def example_random_course(location_id: int, req: Optional[ExampleCourseRequest] = None,
+                          user: User = Depends(current_user)) -> dict:
+    """FR-3a: one example day near the traveler's own drawn point, for the map under the dice. The rule
+    planner only (no LLM call, so it is quick and free) and nothing is saved. The seed is the point's, the
+    same one POST /random-courses uses there."""
+    req = req or ExampleCourseRequest()
+    store = get_store()
+    loc = _own_location(store, location_id, user)
+    places = store.list_places()
+    selectable = random_spots.selectable_areas(store.list_areas(), places)
+    profile = req.user_profile.model_dump() if req.user_profile else dict(config.EXAMPLE_PROFILE)
+    start, end = req.start_time or config.EXAMPLE_START, req.end_time or config.EXAMPLE_END
+    _, items, picked = planner.random_course(places, profile, start, end, {"lat": loc["lat"], "lng": loc["lng"]},
+                                             selectable, seed=random_spots.seed_for_location(loc["location_id"]),
+                                             use_llm=False)
+    hub = picked.hub.place
+    return {"location_id": loc["location_id"], "area_id": picked.area_id, "start_time": start, "end_time": end,
+            "personalized": req.user_profile is not None,
+            "hub": {"place_id": hub["id"], "name_ko": hub["name_ko"], "name_en": hub["name_en"],
+                    "km": random_spots.round_km(picked.km)},
+            "stops": random_spots.example_stops(items, places)}
+
+
+@app.post("/random-courses", status_code=201)
+def create_random_course(req: RandomCourseRequest, user: User = Depends(current_user)) -> dict:
+    """FR-9: a day near the traveler's own drawn point. FR-8: no silent second draw on 409. FR-3a: the point's
+    seed, so with the rule planner this is the example course the traveler saw for the same taste."""
+    store = get_store()
+    loc = _own_location(store, req.location_id, user)
     places = store.list_places()
     selectable = random_spots.selectable_areas(store.list_areas(), places)
     course, items, _ = planner.random_course(places, req.user_profile.model_dump(), req.start_time, req.end_time,
-                                             {"lat": loc["lat"], "lng": loc["lng"]}, selectable)
+                                             {"lat": loc["lat"], "lng": loc["lng"]}, selectable,
+                                             seed=random_spots.seed_for_location(loc["location_id"]))
     course["owner_id"] = user.id
     course["origin_location_id"] = loc["location_id"]
     store.create_course(course, items)

@@ -344,6 +344,13 @@ export const ja: Messages = {
     landingSub: "どこへ行くか迷ったら、サイコロを振ってみましょう。",
     pointGone: "選ばれた地点が見つかりません。もう一度振ってください。",
     backToDice: "サイコロに戻る",
+    exampleTitle: "このあたりのモデルコース",
+    exampleTime: (start, end) => `${start}–${end}`,
+    exampleGeneric: "すべての興味を入れて作った例です。下のボタンで好みと時間に合わせたコースを作ります。",
+    examplePersonal: "保存した好みで作った例です。下のボタンでこのあたりのコースを作って保存します。",
+    exampleLoading: "モデルコースを作成中…",
+    exampleFailed: "このあたりではモデルコースを作れませんでした。",
+    exampleStop: (n, name) => `${n}番目: ${name}`,
   },
 
   social: {

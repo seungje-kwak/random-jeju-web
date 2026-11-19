@@ -243,6 +243,8 @@ class TripCtx:
     # tasks/prd-random-jeju-merge.md FR-6: a random course's hub centre (random_course picks it). Used as the
     # anchor instead of a hub drawn by density. None for every other course.
     near: Optional[dict] = None
+    # tasks/prd-random-jeju-merge.md FR-3a: the example course under a fresh random point never calls the LLM
+    use_llm: bool = True
     _moves: dict = field(default_factory=dict, repr=False)
 
     def move(self, a: dict, b: dict) -> tuple[str, int]:
@@ -1215,7 +1217,7 @@ def run_pipeline(places: list[dict], ctx: TripCtx, min_candidates: int) -> tuple
     cands_by_id = {c["id"]: c for c in cands}
 
     items = None
-    if config.USE_LLM:
+    if config.USE_LLM and ctx.use_llm:
         llm_input = build_llm_input(cands, ctx, fixed_first["id"] if fixed_first else None)
         for attempt in (1, 2):                                                        # 10.8: one retry
             try:
@@ -1327,10 +1329,11 @@ def random_hub(places: list[dict], profile_in: dict, start: int, end: int, point
 
 def random_course(places: list[dict], profile_in: dict, start_time: str, end_time: str, point: dict,
                   selectable: set[str], seed: Optional[int] = None,
-                  stats: Optional[dict] = None) -> tuple[dict, list[dict], RandomHub]:
+                  stats: Optional[dict] = None, use_llm: bool = True) -> tuple[dict, list[dict], RandomHub]:
     """FR-5: new_course in the area of random_hub's hub, anchored on that hub. `point`: {lat, lng}.
     The caller adds owner_id / origin_location_id. 409 NO_CANDIDATES when nothing fits (FR-8: the caller
-    does not draw again, so the point the traveler saw and the course stay together)."""
+    does not draw again, so the point the traveler saw and the course stay together). `use_llm=False`: the
+    rule planner even when an LLM is set up (FR-3a example course)."""
     start, end = check_time_window(start_time, end_time)
     seed = new_seed() if seed is None else seed
     picked = random_hub(places, profile_in, start, end, point, selectable, seed)
@@ -1338,6 +1341,7 @@ def random_course(places: list[dict], profile_in: dict, start_time: str, end_tim
         raise ApiError(409, "NO_CANDIDATES", "No places fit these choices.")
     ctx = _course_ctx(profile_in, start, end, picked.area_id, seed, stats)
     ctx.near = picked.hub.place
+    ctx.use_llm = use_llm
     rows, gaps = run_pipeline(in_area(places, picked.area_id), ctx, min_candidates=2)
     course_id = str(uuid.uuid4())
     from .store import now_iso

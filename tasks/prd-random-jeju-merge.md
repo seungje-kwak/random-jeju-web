@@ -245,6 +245,19 @@
 - [x] Typecheck/lint passes
 - [x] Verify in browser (4곳 모두 보이고 등급 표시 없음)
 
+#### US-018: 굴린 지점의 예시 코스를 지도에 보여 주기 (P0, 2026-11-19 추가)
+**설명:** 사용자로서, 주사위를 굴리자마자 그 근처에서 하루를 어떻게 보낼 수 있는지 지도와 목록으로 보고 싶다.
+
+**완료 기준:**
+- [x] FR-3a API. 테스트: 내 지점에서 순서대로 2곳 이상, 저장하지 않음 / 같은 취향이면 `POST /random-courses`의 코스와 같은 장소·시간 / LLM을 켜도 부르지 않음 / 토큰 없음 401, 남의 지점 404, 잘못된 시간 422 / 지점별 seed가 일정하고 서로 다름
+- [x] `/random`: 굴리면 예시 코스를 받아 "근처에 이런 곳이 있어요" 자리에 번호·사진·도착 시각 목록으로 보여 준다. 받는 동안·실패하면 근처 장소 목록과 안내 문구를 보여 준다. 취향을 저장했으면 그 취향으로 짠다
+- [x] 카카오맵: 주사위 옆에 번호 마커와 방문 순서대로 이은 점선, 주사위와 모든 장소가 들어오게 화면을 맞춘다 (지점으로 날아가는 600ms 애니메이션이 끝난 뒤에)
+- [x] 대체 지도(카카오를 못 불러올 때): 섬 그림 위에 번호 마커와 점선. 하루 코스는 섬 전체에선 몇 px 안이라 코스 화면의 대체 지도처럼 마커를 겹치지 않게 벌린다 (`spread`, 주사위 포함)
+- [x] 예시는 지점·취향과 함께 `sessionStorage`에 둬서 탭을 옮겨도 다시 부르지 않는다
+- [x] 4개 언어 문구
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19 로컬: 대정읍·중문동·애월읍 지점에서 7곳 코스, 카카오맵과 대체 지도, 한국어·영어)
+
 ### 4.3 사진·지도·피드 (RandomJeju 이관)
 
 #### US-020: 사진 게시글 올리기 API (P0, M4)
@@ -451,6 +464,16 @@
   ```
   - `locations`에 `user_id`를 넣어 저장한다. `address` 열에는 지금처럼 `adm_nm`을 넣는다.
   - `area_id`는 FR-4의 결과, `nearest_hub`는 프로필 없이(모든 관심사, 식사 없음) FR-6으로 찾은 동네, `preview_places`는 지점에서 가까운 순 3곳(사진 있는 곳 먼저, 5km 안)이다. 5km 안에 장소가 없으면 빈 배열이다.
+- **FR-3a 예시 코스 (2026-11-19 추가).** `POST /random-points/{location_id}/example-course` (토큰 필수, 내 지점만) → 200. 본문 `{user_profile?, start_time?, end_time?}`: 저장한 취향이 있으면 그것, 없으면 기본 여행자(관심사 전부, 체력 2, 도보 20분, 식단 없음, 10:00–18:00, `config.EXAMPLE_*`).
+  ```json
+  {"location_id": 1234, "area_id": "aewol", "start_time": "10:00", "end_time": "18:00", "personalized": false,
+   "hub": {"place_id": 512, "name_ko": "…", "name_en": "…", "km": 0.8},
+   "stops": [{"order": 1, "place_id": 512, "name_ko": "…", "name_en": "…", "category": "nature", "lat": 33.46, "lng": 126.33,
+              "image_url": "…", "start_time": "10:00", "stay_min": 60, "move_method": "walk", "move_min": 10, "is_rest_stop": false}]}
+  ```
+  - FR-4–FR-7과 같은 `random_course`로 만들지만 **규칙 플래너만** 쓴다 (LLM이 켜져 있어도 부르지 않는다. 약 50ms). 아무것도 저장하지 않는다.
+  - seed는 지점마다 서버가 정한다 (`sha256("random-point:{location_id}")`). 요청으로 seed를 받지 않는다 (P1 US-P14). `POST /random-courses`도 같은 seed를 쓰므로, 규칙 플래너라면 같은 취향으로 짠 코스가 예시와 같다. LLM 플래너(배포 환경)는 같은 동네에서 장소를 다시 고르므로 예시와 다를 수 있다.
+  - 409 `NO_CANDIDATES`면 화면은 예시 대신 FR-3의 근처 장소 목록을 보여 준다.
 
 ### 5.2 랜덤 지점에서 코스 만들기
 

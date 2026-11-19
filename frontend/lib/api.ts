@@ -1,8 +1,8 @@
 // The frontend only talks to FastAPI (1.3). Base URL comes from NEXT_PUBLIC_API_URL.
 import { accessToken, existingToken, refreshedToken } from "./auth";
 import type {
-  Area, CheckIn, Comment, Course, FeedPage, Me, Place, PhotoCluster, PhotoMarker, Post, PostCategory, PostMeta, RandomPoint,
-  ReplanReason, UserProfileInput,
+  Area, CheckIn, Comment, Course, ExampleCourse, FeedPage, Me, Place, PhotoCluster, PhotoMarker, Post, PostCategory, PostMeta,
+  RandomPoint, ReplanReason, UserProfileInput,
 } from "./types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
@@ -104,6 +104,12 @@ export const api = {
     request<Course>("/purchase", { method: "POST", body: JSON.stringify({ course_id }) }),
   // tasks/prd-random-jeju-merge.md FR-3, FR-9: rolling the dice is the first action that needs a guest session
   drawPoint: () => authedRequest<RandomPoint>("/random-points", { method: "POST" }),
+  /** FR-3a: an example day at the drawn point (rule planner, not saved). No taste: the server's default traveler. */
+  exampleCourse: (location_id: number, taste?: { user_profile: UserProfileInput; start_time: string; end_time: string } | null) =>
+    authedRequest<ExampleCourse>(`/random-points/${location_id}/example-course`, {
+      method: "POST",
+      body: JSON.stringify(taste ?? {}),
+    }),
   createRandomCourse: (location_id: number, user_profile: UserProfileInput, start_time: string, end_time: string) =>
     authedRequest<Course>("/random-courses", {
       method: "POST",

@@ -344,6 +344,13 @@ export const zh: Messages = {
     landingSub: "不知道去哪儿？掷个骰子吧。",
     pointGone: "找不到掷出的地点，请再掷一次。",
     backToDice: "回到骰子",
+    exampleTitle: "附近的示例行程",
+    exampleTime: (start, end) => `${start}–${end}`,
+    exampleGeneric: "按所有兴趣生成的示例。点下面的按钮，按你的喜好和时间重新安排。",
+    examplePersonal: "按你保存的喜好生成的示例。点下面的按钮，规划并保存这附近的行程。",
+    exampleLoading: "正在生成示例行程…",
+    exampleFailed: "这附近无法生成示例行程。",
+    exampleStop: (n, name) => `第${n}站：${name}`,
   },
 
   social: {

@@ -344,6 +344,13 @@ export const ko: Messages = {
     landingSub: "어디로 갈지 고민될 땐, 주사위를 굴려 보세요.",
     pointGone: "뽑은 지점을 찾을 수 없어요. 다시 굴려 주세요.",
     backToDice: "주사위로 돌아가기",
+    exampleTitle: "이 근처 예시 코스",
+    exampleTime: (start, end) => `${start}–${end}`,
+    exampleGeneric: "모든 관심사를 넣어 짠 예시예요. 아래 버튼을 누르면 내 취향과 시간에 맞춰 짜요.",
+    examplePersonal: "저장한 취향으로 짠 예시예요. 아래 버튼을 누르면 이 근처 코스를 짜서 저장해요.",
+    exampleLoading: "예시 코스를 짜는 중…",
+    exampleFailed: "이 근처로는 예시 코스를 못 짰어요.",
+    exampleStop: (n, name) => `${n}번째 장소: ${name}`,
   },
 
   // Random Jeju M4: tabs, feed, comments, photo map, upload (tasks/prd-random-jeju-merge.md US-021 - US-027)

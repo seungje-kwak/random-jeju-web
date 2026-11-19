@@ -387,6 +387,13 @@ export const en = {
     landingSub: "Can't decide where to go? Roll the dice.",
     pointGone: "We couldn't find the spot you rolled. Please roll again.",
     backToDice: "Back to the dice",
+    exampleTitle: "An example day here",
+    exampleTime: (start: string, end: string) => `${start}–${end}`,
+    exampleGeneric: "Made for every interest. The button below plans a day for your taste and times.",
+    examplePersonal: "Made with your saved taste. The button below plans and saves your day here.",
+    exampleLoading: "Planning an example day…",
+    exampleFailed: "Couldn't plan an example day here.",
+    exampleStop: (n: number, name: string) => `Stop ${n}: ${name}`,
   },
 
   // Random Jeju M4: tabs, feed, comments, photo map, upload (tasks/prd-random-jeju-merge.md US-021 - US-027)

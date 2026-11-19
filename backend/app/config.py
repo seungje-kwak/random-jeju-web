@@ -152,6 +152,11 @@ GRID_REACH_KM = 5.0         # FR-0 (c): a dense place must be this close to the 
 PREVIEW_RADIUS_KM = 5.0     # FR-3: places shown under a fresh random point
 PREVIEW_COUNT = 3
 RANDOM_FED_DETOUR_KM = 3.0  # FR-6: how much farther a hub with a restaurant for every meal may be
+# FR-3a: the example course under a fresh point, for a traveler who has not told us their taste yet
+EXAMPLE_PROFILE = {"interests": ["nature", "market", "cafe", "food", "culture", "photo"], "fitness_level": 2,
+                   "max_walk_min": 20, "avoid_slopes": False, "condition_today": "normal", "diet": "none"}
+EXAMPLE_START = "10:00"
+EXAMPLE_END = "18:00"
 
 # --- photo posts, feed, comments (tasks/prd-random-jeju-merge.md FR-11 - FR-18) ---
 POST_CATEGORIES = ("맛집", "카페", "쇼핑", "관광", "문화", "스포츠")   # DB enum post_category (Q-10)

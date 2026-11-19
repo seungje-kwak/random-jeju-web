@@ -1,10 +1,11 @@
 "use client";
 // Browser-only conveniences for the random flow (tasks/prd-random-jeju-merge.md US-013, US-016).
 // Every read and write is wrapped: private windows and blocked storage just behave as "nothing saved".
-import type { RandomPoint, UserProfileInput } from "./types";
+import type { ExampleCourse, RandomPoint, UserProfileInput } from "./types";
 
 const PROFILE_KEY = "rj.profile";       // localStorage: the last onboarding answers
 const POINT_KEY = "rj.lastPoint";       // sessionStorage: the last drawn point, so the card survives a tab switch
+const EXAMPLE_KEY = "rj.lastExample";   // sessionStorage: that point's example course (FR-3a)
 
 export type SavedProfile = { user_profile: UserProfileInput; start_time: string; end_time: string };
 
@@ -38,6 +39,30 @@ export function saveLastPoint(p: RandomPoint | null): void {
     if (p) window.sessionStorage.setItem(POINT_KEY, JSON.stringify(p));
     else window.sessionStorage.removeItem(POINT_KEY);
   } catch { /* the card just resets on the next visit */ }
+}
+
+/** Which taste an example was made for: the saved answers, or "" for the server's default traveler. */
+export function tasteKey(p: SavedProfile | null): string {
+  return p ? JSON.stringify(p) : "";
+}
+
+/** The example course kept for this point and this taste, if any. */
+export function loadExample(locationId: number, taste: string): ExampleCourse | null {
+  try {
+    const raw = window.sessionStorage.getItem(EXAMPLE_KEY);
+    const v = raw ? (JSON.parse(raw) as { taste: string; example: ExampleCourse }) : null;
+    const e = v?.example;
+    return e && v.taste === taste && e.location_id === locationId && Array.isArray(e.stops) ? e : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveExample(e: ExampleCourse | null, taste: string): void {
+  try {
+    if (e) window.sessionStorage.setItem(EXAMPLE_KEY, JSON.stringify({ taste, example: e }));
+    else window.sessionStorage.removeItem(EXAMPLE_KEY);
+  } catch { /* asked again on the next visit */ }
 }
 
 /** Where the traveler goes to pick (or change) their taste before a random course. */

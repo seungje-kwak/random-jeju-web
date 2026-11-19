@@ -165,6 +165,33 @@ export type RandomPoint = {
   preview_places: { id: number; name_ko: string; name_en: string; category: Category; image_url: string | null; km: number }[];
 };
 
+// POST /random-points/{location_id}/example-course (FR-3a): a day shown under the dice, not saved
+export type ExampleStop = {
+  order: number;
+  place_id: number;
+  name_ko: string;
+  name_en: string;
+  category: Category;
+  lat: number;
+  lng: number;
+  image_url: string | null;
+  start_time: string;
+  stay_min: number;
+  move_method: MoveMethod | null;
+  move_min: number | null;
+  is_rest_stop: boolean;
+};
+
+export type ExampleCourse = {
+  location_id: number;
+  area_id: string;
+  start_time: string;
+  end_time: string;
+  personalized: boolean;              // made with the traveler's saved taste and times
+  hub: { place_id: number; name_ko: string; name_en: string; km: number };
+  stops: ExampleStop[];
+};
+
 // tasks/prd-random-jeju-merge.md FR-35
 export type Me = {
   user_id: string;

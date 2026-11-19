@@ -6,6 +6,7 @@ The course built from a point is planner.random_course (FR-4 - FR-8).
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import time
 from typing import Optional
@@ -95,3 +96,28 @@ def nearby(point: dict, places: list[dict], hubs: list[tuple[planner.Hub, str]])
 
 def round_km(km: float) -> float:
     return math.floor(km * 10 + 0.5) / 10
+
+
+def seed_for_location(location_id: int) -> int:
+    """FR-3a: one seed per drawn point, so the example course and a course planned at that point with the same
+    taste are the same day (the rule planner's only randomness is the seed). Made on the server: requests never
+    carry a seed (tasks/prd-recommendation-p1.md US-P14)."""
+    digest = hashlib.sha256(f"random-point:{location_id}".encode()).digest()
+    return int.from_bytes(digest[:4], "big") & 0x7FFFFFFF
+
+
+def example_stops(items: list[dict], places: list[dict]) -> list[dict]:
+    """FR-3a: the stops of an example course with what the map and the list need, in visiting order."""
+    by_id = {p["id"]: p for p in places}
+    out = []
+    for it in sorted(items, key=lambda i: i["order"]):
+        p = by_id.get(it["place_id"])
+        if p is None:
+            continue
+        out.append({
+            "order": it["order"], "place_id": p["id"], "name_ko": p["name_ko"], "name_en": p["name_en"],
+            "category": p["category"], "lat": p["lat"], "lng": p["lng"], "image_url": p.get("image_url"),
+            "start_time": it["start_time"], "stay_min": it["stay_min"], "move_method": it.get("move_method"),
+            "move_min": it.get("move_min"), "is_rest_stop": bool(it.get("is_rest_stop")),
+        })
+    return out

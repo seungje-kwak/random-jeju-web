@@ -202,6 +202,62 @@ def test_picked_course_has_the_new_fields_and_an_owner_when_signed_in(client, fa
     assert fake.courses[mine["id"]]["owner_id"] == user
 
 
+# --- FR-3a example course under a fresh point -----------------------------------------------------------
+def example(client, user, location_id, body=None):
+    return client.post(f"/random-points/{location_id}/example-course", headers=token(user), json=body or {})
+
+
+def test_example_course_under_my_point_is_shown_but_not_saved(client, fake):
+    user = str(uuid.uuid4())
+    point = draw(client, user)
+    res = example(client, user, point["location_id"])
+    assert res.status_code == 200, res.text
+    body = res.json()
+    stops = body["stops"]
+    assert len(stops) >= 2 and [s["order"] for s in stops] == list(range(1, len(stops) + 1))
+    assert all(isinstance(s["lat"], float) and isinstance(s["lng"], float) and s["name_ko"] for s in stops)
+    assert body["area_id"] == "jeju-city" and body["hub"]["name_ko"] and body["personalized"] is False
+    assert (body["start_time"], body["end_time"]) == (config.EXAMPLE_START, config.EXAMPLE_END)
+    assert fake.courses == {} and fake.locations[point["location_id"]]["course_id"] is None   # nothing saved
+
+
+def test_example_course_is_the_course_planned_there_with_the_same_taste(client, fake):
+    user = str(uuid.uuid4())
+    point = draw(client, user)
+    trip = {"user_profile": PROFILE, "start_time": "10:00", "end_time": "18:00"}
+    ex = example(client, user, point["location_id"], trip).json()
+    course = client.post("/random-courses", headers=token(user), json={"location_id": point["location_id"], **trip}).json()
+    assert ex["personalized"] is True
+    assert [(s["place_id"], s["start_time"]) for s in ex["stops"]] == \
+        [(i["place_id"], i["start_time"]) for i in course["items"]]
+
+
+def test_example_course_never_calls_the_llm(client, monkeypatch):
+    from app import planner
+    monkeypatch.setattr(config, "USE_LLM", True)
+    monkeypatch.setattr(planner, "call_llm", lambda *a, **k: pytest.fail("the example course called the LLM"))
+    user = str(uuid.uuid4())
+    point = draw(client, user)
+    assert example(client, user, point["location_id"]).status_code == 200
+
+
+def test_example_course_needs_my_own_point_and_a_good_window(client):
+    user = str(uuid.uuid4())
+    point = draw(client, user)
+    assert client.post(f"/random-points/{point['location_id']}/example-course", json={}).status_code == 401
+    other = example(client, str(uuid.uuid4()), point["location_id"])
+    assert other.status_code == 404 and other.json()["detail"]["code"] == "LOCATION_NOT_FOUND"
+    bad = example(client, user, point["location_id"], {"start_time": "18:00", "end_time": "10:00"})
+    assert bad.status_code == 422 and bad.json()["detail"]["code"] == "INVALID_TIME_WINDOW"
+
+
+def test_each_point_has_its_own_stable_seed():
+    from app import random_spots
+    seeds = [random_spots.seed_for_location(i) for i in range(1, 51)]
+    assert seeds == [random_spots.seed_for_location(i) for i in range(1, 51)]
+    assert len(set(seeds)) == 50 and all(0 <= s < 2 ** 31 for s in seeds)
+
+
 # --- US-017 paywall switch --------------------------------------------------------------------------------
 def test_paywall_off_shows_every_stop(client, fake, monkeypatch):
     monkeypatch.setattr(config, "PAYWALL_ENABLED", False)
@@ -253,9 +309,11 @@ def test_photo_at_the_random_point_checks_in_once(client, fake, monkeypatch):
     again = _post(client, user, point["lat"], point["lng"]).json()
     assert again["visit"]["is_new"] is False                                     # FR-21: once per course
     shown = client.get(f"/courses/{course['id']}").json()["visits"]
-    # the old-town point is also within a stop's radius, so that stop may be checked in too (once each)
+    # the old-town point is also within stops' radius, so each photo may check in its nearest stop too:
+    # at most one stop per photo, and every stop at most once (FR-21)
     kinds = [v["kind"] for v in shown]
-    assert kinds.count("random_point") == 1 and kinds.count("course_place") <= 1
+    stop_ids = [v["place_id"] for v in shown if v["kind"] == "course_place"]
+    assert kinds.count("random_point") == 1 and len(stop_ids) <= 2 and len(set(stop_ids)) == len(stop_ids)
     assert all(v["thumb_url"].endswith(".jpg") for v in shown)
     feed = client.get("/posts").json()["posts"]
     assert feed[0]["visit"]["kind"] == "random_point"

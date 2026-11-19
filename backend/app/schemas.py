@@ -60,6 +60,14 @@ class RandomCourseRequest(BaseModel):
     end_time: str
 
 
+class ExampleCourseRequest(BaseModel):
+    """tasks/prd-random-jeju-merge.md FR-3a: the traveler's saved taste and times when they have them. Without
+    `user_profile` the server uses config.EXAMPLE_PROFILE; without times, EXAMPLE_START-EXAMPLE_END."""
+    user_profile: Optional[UserProfileIn] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+
 class ReplanRequest(BaseModel):
     reason: ReplanReason
     current_order: int = Field(ge=1)

@@ -1,17 +1,20 @@
 "use client";
 // tasks/prd-random-jeju-merge.md US-013: roll the dice, see where it landed and what is near, then plan a day there.
+// FR-3a: each roll also shows an example day there, on the map and as a list.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { RandomMap } from "@/components/RandomMap";
+import { RandomMap, type MapStop } from "@/components/RandomMap";
 import { TabBar, TabBarSpacer } from "@/components/TabBar";
 import { V9Header } from "@/components/V9Header";
 import { ApiError, api } from "@/lib/api";
 import { AuthError } from "@/lib/auth";
 import { MESSAGES, useLocale } from "@/lib/i18n";
-import { loadLastPoint, loadProfile, randomOnboardingHref, saveLastPoint } from "@/lib/random-store";
-import type { RandomPoint } from "@/lib/types";
+import {
+  loadExample, loadLastPoint, loadProfile, randomOnboardingHref, saveExample, saveLastPoint, tasteKey,
+} from "@/lib/random-store";
+import type { ExampleCourse, RandomPoint } from "@/lib/types";
 
 const MIN_ROLL_MS = 700;   // long enough to see the dice tumble even when the API is quick
 
@@ -26,11 +29,40 @@ export default function RandomPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [hasProfile, setHasProfile] = useState(false);
   const [areaNames, setAreaNames] = useState<Record<string, string>>({});
+  const [example, setExample] = useState<ExampleCourse | null>(null);
+  const [exampleState, setExampleState] = useState<"idle" | "loading" | "failed">("idle");
   const busy = useRef(false);
+  const exampleReq = useRef(0);   // only the newest point's example is shown
+
+  // FR-3a: the example day at this point, for the saved taste (or the server's default traveler).
+  async function showExample(p: RandomPoint) {
+    const saved = loadProfile();
+    const taste = tasteKey(saved);
+    const id = ++exampleReq.current;
+    const kept = loadExample(p.location_id, taste);
+    if (kept) {
+      setExample(kept);
+      setExampleState("idle");
+      return;
+    }
+    setExample(null);
+    setExampleState("loading");
+    try {
+      const e = await api.exampleCourse(p.location_id, saved);
+      if (id !== exampleReq.current) return;
+      setExample(e);
+      setExampleState("idle");
+      saveExample(e, taste);
+    } catch {
+      if (id === exampleReq.current) setExampleState("failed");
+    }
+  }
 
   useEffect(() => {
-    setPoint(loadLastPoint());
+    const p = loadLastPoint();
+    setPoint(p);
     setHasProfile(loadProfile() !== null);
+    if (p) void showExample(p);
   }, []);
   // Eup/myeon/dong names exist only in Korean; other languages name the area instead ("Jeju City Downtown").
   useEffect(() => {
@@ -49,6 +81,7 @@ export default function RandomPage() {
       setPoint(p);
       saveLastPoint(p);
       setPhase("idle");
+      void showExample(p);
     } catch (e) {
       setPhase(e instanceof AuthError ? "signInFailed" : "rollFailed");
     } finally {
@@ -81,13 +114,21 @@ export default function RandomPage() {
   const name = (p: { name_ko: string; name_en: string }) => (locale === "ko" ? p.name_ko : p.name_en || p.name_ko);
   const placeLabel = (p: RandomPoint) =>
     (locale !== "ko" && p.area_id && areaNames[p.area_id]) || p.adm_nm;
+  const stops = example && point && example.location_id === point.location_id ? example.stops : null;
+  const mapStops = useMemo<MapStop[] | null>(
+    () => stops?.map((s) => ({
+      order: s.order, lat: s.lat, lng: s.lng,
+      label: t.exampleStop(s.order, locale === "ko" ? s.name_ko : s.name_en || s.name_ko),
+    })) ?? null,
+    [stops, t, locale],
+  );
 
   return (
     <main className="v9-site flex min-h-[100dvh] flex-col">
       <V9Header />
       <div className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_440px]">
         <section className="h-[46dvh] min-h-[280px] lg:h-auto">
-          <RandomMap point={point} label={t.mapLabel} markerLabel={t.marker} />
+          <RandomMap point={point} stops={mapStops} label={t.mapLabel} markerLabel={t.marker} />
         </section>
 
         <section className="relative z-10 -mt-5 rounded-t-[24px] bg-white px-5 pb-10 pt-6 shadow-[0_-8px_30px_rgba(20,49,54,.12)] lg:mt-0 lg:rounded-none lg:shadow-none lg:border-l lg:border-[var(--line)]"
@@ -114,6 +155,41 @@ export default function RandomPage() {
                 </p>
               )}
 
+              {stops && example ? (
+                <>
+                  <div className="mt-5 flex items-baseline justify-between gap-3">
+                    <h2 className="text-xs font-bold tracking-wide text-[#56767b]">{t.exampleTitle}</h2>
+                    <span className="text-xs tabular-nums text-[var(--muted)]">{t.exampleTime(example.start_time, example.end_time)}</span>
+                  </div>
+                  <ol className="mt-2 grid gap-2">
+                    {stops.map((s) => (
+                      <li key={s.order} className="flex items-center gap-3 rounded-2xl border border-[var(--line)] p-2">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#217981] text-xs font-extrabold text-white"
+                          aria-hidden="true">{s.order}</span>
+                        {s.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.image_url} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" loading="lazy" />
+                        ) : (
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#eff5f2]"><CategoryIcon category={s.category} /></span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold text-[#143136]">{name(s)}</span>
+                          <span className="text-xs tabular-nums text-[var(--muted)]">{s.start_time}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+                    {example.personalized ? t.examplePersonal : t.exampleGeneric}
+                  </p>
+                </>
+              ) : (
+              <>
+              {exampleState !== "idle" && (
+                <p className="mt-4 text-sm text-[var(--muted)]" role="status">
+                  {exampleState === "loading" ? t.exampleLoading : t.exampleFailed}
+                </p>
+              )}
               <h2 className="mt-5 text-xs font-bold tracking-wide text-[#56767b]">{t.nearbyTitle}</h2>
               {point.preview_places.length ? (
                 <ul className="mt-2 grid gap-2">
@@ -134,6 +210,8 @@ export default function RandomPage() {
                 </ul>
               ) : (
                 <p className="mt-2 text-sm text-[var(--muted)]">{t.nothingNearby}</p>
+              )}
+              </>
               )}
 
               <div className="mt-6 grid gap-2.5">
