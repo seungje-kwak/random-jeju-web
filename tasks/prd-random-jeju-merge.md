@@ -413,7 +413,7 @@
 **설명:** 운영자로서, 쓰지 않는 서버와 DB를 정리해 비용과 보안 위험을 줄이고 싶다.
 
 **완료 기준:**
-- [ ] (M0에 먼저) Supabase A의 DB 비밀번호를 바꾼다. 옛 비밀번호는 `random-jeju-api`의 `src/main/resources/application.conf`에 커밋돼 있었다. Ktor 서버의 `.env`도 새 값으로 바꾸거나, 서버를 먼저 끈다
+- [x] (M0에 먼저) Supabase A의 DB 비밀번호를 바꾼다. 옛 비밀번호는 `random-jeju-api`의 `src/main/resources/application.conf`에 커밋돼 있었다. Ktor 서버의 `.env`도 새 값으로 바꾸거나, 서버를 먼저 끈다 (2026-11-19 완료. 옛 비밀번호로는 접속이 거부되고, 새 `.env`로는 접속된다)
 - [x] (M0에 먼저) 8.6의 RLS 긴급 조치를 적용하고, anon 키로 `users`, `photos`, `locations`를 읽거나 지울 수 없음을 확인한다 (2026-11-19 완료)
 - [ ] (M7) `users`의 임시 정책 2개와 `posts`·`comments`·`post_likes`의 정책 10개를 지운다 (FR-34)
 - [ ] Render/Cloud Run의 Ktor 서비스를 멈춘다. Android 앱의 API 호출은 이때부터 실패한다 (4장 비목표)
