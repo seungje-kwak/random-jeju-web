@@ -150,11 +150,11 @@
 
 **완료 기준:**
 - [x] 두 서비스를 GitHub `main`에 연결해 push마다 자동 배포한다 (2026-11-19). Vercel 프로젝트 `random-jeju-web`(Root Directory `frontend`) → https://random-jeju-web.vercel.app. Railway 프로젝트 `elegant-perception`(Root Directory `backend`, `Procfile`). 커밋 `ee931cf`가 두 곳 모두 성공했다. 그 앞 `2831084`는 Railway 첫 빌드가 실패하고 재시도에서 성공했다 (원인은 Railway 로그로 아직 보지 않았다)
-- [ ] Railway 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`(A), `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`(`https://random-jeju-web.vercel.app`), 기존 LLM 변수. Railway 공개 주소를 아직 몰라 확인하지 못했다
-- [ ] Vercel 환경 변수: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. 2026-11-19 배포본을 보면 Supabase(A) 주소, anon 키, 카카오 키는 빌드에 들어갔고 **`NEXT_PUBLIC_API_URL`은 빠졌다**. 그래서 배포된 화면이 `http://localhost:8000`을 부르고, 다른 컴퓨터에서는 굴리기·피드·올리기가 동작하지 않는다. `NEXT_PUBLIC_*`는 빌드 때 코드에 박히므로, 값을 넣은 뒤 다시 빌드(Redeploy 또는 새 push)해야 한다
+- [x] Railway 환경 변수: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`(A), `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`(`https://random-jeju-web.vercel.app`), 기존 LLM 변수. 공개 주소 https://random-jeju-web-production.up.railway.app. 2026-11-19 확인: Vercel 주소의 CORS 사전 요청이 허용되고, 게스트 토큰으로 `GET /me`가 200이며, LLM은 Gemini로 켜져 있다
+- [x] Vercel 환경 변수: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_KAKAO_MAP_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. 첫 배포본(`ee931cf`)에는 `NEXT_PUBLIC_API_URL`이 빠져 화면이 `http://localhost:8000`을 불렀다. 값을 넣고 다시 빌드한 `b18674e` 배포본에는 넷 다 들어갔다 (2026-11-19). `NEXT_PUBLIC_*`는 빌드 때 코드에 박히므로 값을 바꾸면 다시 빌드해야 한다
 - [x] CORS가 `Authorization` 헤더와 `DELETE` 메서드를 허용한다 (`backend/app/main.py`: `allow_headers=["*"]`, `allow_methods`에 `DELETE`)
-- [ ] 카카오 개발자 콘솔의 JavaScript 키에 로컬 주소와 Vercel 주소를 사이트 도메인으로 등록한다
-- [ ] `GET /`의 응답으로 배포된 백엔드가 Supabase A를 보고 있음을 확인한다
+- [ ] 카카오 개발자 콘솔의 JavaScript 키에 로컬 주소와 Vercel 주소를 사이트 도메인으로 등록한다. 2026-11-19: 로컬은 등록돼 있고, Vercel 주소는 카카오가 `domain mismatched! caller=https://random-jeju-web.vercel.app`으로 거부한다. 배포 빌드의 키는 로컬과 같은 키다 (키 문제가 아니다)
+- [x] `GET /`의 응답으로 배포된 백엔드가 Supabase A를 보고 있음을 확인한다. 2026-11-19: `store: supabase`, 피드와 사진 지도가 RandomJeju(A)의 게시글·사진(28장)을 돌려준다
 
 ### 4.2 랜덤 + 추천
 

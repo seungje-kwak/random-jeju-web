@@ -31,16 +31,22 @@ data/                  장소 시드 CSV, 데모 코스
 | 서비스 | 설정 | 주소 |
 |---|---|---|
 | Vercel (`random-jeju-web`) | Root Directory `frontend`. 변수 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_KAKAO_MAP_KEY` | https://random-jeju-web.vercel.app |
-| Railway (`elegant-perception`) | Root Directory `backend`, `Procfile`로 uvicorn 실행. 변수 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`, LLM 변수 | 기록 안 됨 |
+| Railway (`elegant-perception`) | Root Directory `backend`, `Procfile`로 uvicorn 실행. 변수 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `ALLOWED_ORIGINS`, LLM 변수 | https://random-jeju-web-production.up.railway.app |
 
 `NEXT_PUBLIC_*` 값은 빌드할 때 코드에 박힌다. Vercel에서 값을 바꾸면 다시 빌드해야 적용된다.
 
-2026-11-19 상태: 커밋 `ee931cf`가 두 곳 모두 배포에 성공했다. 남은 일:
+2026-11-19 확인 (커밋 `b18674e` 배포본):
 
-1. Vercel에 `NEXT_PUBLIC_API_URL`(Railway 공개 주소)을 넣고 다시 빌드한다. 지금 배포본에는 이 값이 없어 화면이 `http://localhost:8000`을 부른다
-2. Railway의 `ALLOWED_ORIGINS`에 `https://random-jeju-web.vercel.app`을 넣는다
-3. 카카오 개발자 콘솔의 JavaScript 키에 `https://random-jeju-web.vercel.app`을 사이트 도메인으로 등록한다
-4. 배포된 백엔드의 `GET /`와 굴리기 → 코스 → 올리기 → 인증 흐름을 확인하고, Railway 공개 주소를 이 표에 적는다
+- 프론트 빌드에 Railway 주소, Supabase(RandomJeju) 주소·anon 키, 카카오 키가 모두 들어갔다
+- 백엔드 `GET /`가 `{"ok": true, "store": "supabase", "llm": "gemini:…"}`를 돌려준다
+- CORS: Vercel 주소에서 온 요청에 `POST`·`DELETE`와 `Authorization` 헤더를 허용한다
+- 게스트 로그인 토큰으로 `GET /me`가 200이다 (토큰 검증 동작). 토큰 없이는 401
+- 피드(`/posts`), 사진 지도(`/photos/map` 28장, `/photos/clusters` 읍면동 묶음)가 RandomJeju 데이터를 돌려준다
+
+남은 일:
+
+1. **카카오맵:** 카카오가 Vercel 주소를 거부한다 (`domain mismatched! caller=https://random-jeju-web.vercel.app`). 같은 키가 `http://localhost:3000`에서는 동작한다. 카카오 개발자 콘솔에서 이 앱의 JavaScript 키(Web 플랫폼)에 `https://random-jeju-web.vercel.app`을 사이트 도메인으로 더한다. 도메인 검사는 실행할 때 하므로 다시 빌드하지 않아도 된다
+2. 배포된 화면에서 굴리기 → 코스 → 올리기 → 인증 흐름을 한 번 해 본다
 
 ## 마이그레이션
 
