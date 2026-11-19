@@ -84,6 +84,8 @@ class LLMItem(BaseModel):
     order: int = Field(ge=1)
     stay_min: int = Field(gt=0)
     reason_en: str = Field(min_length=1, max_length=300)
+    # tasks/prd-random-jeju-merge.md US-042: may be missing or empty; then the Korean rule sentence is used
+    reason_ko: str = Field(default="", max_length=300)
     is_rest_stop: bool = False
 
 

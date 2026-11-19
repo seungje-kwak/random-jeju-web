@@ -87,6 +87,23 @@ export function PlaceDescription({ place, className, override }: { place: Place;
   if (!fallback.original && !override) return null;
   if (locale === "en") return <p className={className}>{fallback.text}</p>;
   if (override) return <p className={className}>{override}</p>;
+  // US-041: Korean stored with the place. A machine translation says so, with the English one tap away.
+  if (locale === "ko" && place.description_ko?.trim()) {
+    const S = MESSAGES.ko.stop;
+    return (
+      <>
+        <p className={className}>{place.description_ko.trim()}</p>
+        {place.description_ko_status === "machine" && fallback.original && (
+          <details className="stop-card__original">
+            <summary>
+              {S.trMachine} · {S.trOriginal} <span aria-hidden="true">⌄</span>
+            </summary>
+            <p lang="en">{fallback.original}</p>
+          </details>
+        )}
+      </>
+    );
+  }
   if (!loaded || loaded.locale !== locale) return <p className={className}>{MESSAGES[locale].map.aboutPending}</p>;
 
   const reviewed = describeFrom(loaded.table, place);

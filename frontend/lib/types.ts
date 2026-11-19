@@ -38,6 +38,9 @@ export type Place = {
   category: Category;
   place_type: string | null; // stay-time type (oreum_hike, port, cafe, ...). Not shown on screen
   description_en: string;
+  // tasks/prd-random-jeju-merge.md US-041: null until translated; "machine" = LLM translation, "reviewed" = checked
+  description_ko?: string | null;
+  description_ko_status?: "reviewed" | "machine" | null;
   lat: number;
   lng: number;
   address_ko: string;
@@ -99,6 +102,7 @@ export type CourseItem = {
   move_method: MoveMethod | null;
   move_min: number | null;
   reason_en: string;
+  reason_ko?: string | null; // US-042; null on courses made before it
   is_rest_stop: boolean;
   status: ItemStatus;
   place: Place;
@@ -113,6 +117,7 @@ export type MealGap = {
   end_time: string;
   reason: "no_diet_match" | "none_nearby";
   message_en: string;
+  message_ko?: string; // US-042 (the card itself uses the reviewed copy in lib/messages for non-English)
 };
 
 export type Course = {

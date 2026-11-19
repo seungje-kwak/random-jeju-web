@@ -44,9 +44,13 @@ Writing reason_en
 13. Use only facts that appear in the input. Do not mention opening hours, prices, history, transport, travel time, or anything else that is not in the candidate data.
 14. In "food", null means not known. Mention an option only when it is true.
 
+Writing reason_ko
+15. The same reason as reason_en, in natural, polite Korean (해요체), at most 200 characters. Use the place's
+    name_ko when you name a place. Same facts as reason_en, nothing more.
+
 Output
 Return only one JSON object in exactly this shape. No markdown, no code fence, no extra text.
-{"items":[{"place_id":7,"order":1,"stay_min":30,"reason_en":"...","is_rest_stop":false}]}"""
+{"items":[{"place_id":7,"order":1,"stay_min":30,"reason_en":"...","reason_ko":"...","is_rest_stop":false}]}"""
 
 OUTPUT_SCHEMA = {
     "type": "object",
@@ -60,9 +64,10 @@ OUTPUT_SCHEMA = {
                     "order": {"type": "integer"},
                     "stay_min": {"type": "integer"},
                     "reason_en": {"type": "string"},
+                    "reason_ko": {"type": "string"},   # tasks/prd-random-jeju-merge.md US-042
                     "is_rest_stop": {"type": "boolean"},
                 },
-                "required": ["place_id", "order", "stay_min", "reason_en", "is_rest_stop"],
+                "required": ["place_id", "order", "stay_min", "reason_en", "reason_ko", "is_rest_stop"],
                 "additionalProperties": False,
             },
         }
@@ -100,7 +105,7 @@ GEMINI_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {k: v for k, v in OUTPUT_SCHEMA["properties"]["items"]["items"]["properties"].items()},
-                "required": ["place_id", "order", "stay_min", "reason_en", "is_rest_stop"],
+                "required": ["place_id", "order", "stay_min", "reason_en", "reason_ko", "is_rest_stop"],
             },
         }
     },

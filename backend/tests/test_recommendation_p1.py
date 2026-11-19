@@ -201,7 +201,8 @@ def test_vegan_course_meal_gaps_come_back_the_same(api, paywall_on):
     again = client.get(f"/courses/{course['id']}").json()
     assert [g["meal"] for g in again["meal_gaps"]] == ["lunch", "dinner"]
     assert again["meal_gaps"] == fake.courses[course["id"]]["meal_gaps"]
-    assert set(again["meal_gaps"][0]) == {"meal", "start_time", "end_time", "reason", "message_en"}
+    # message_ko: tasks/prd-random-jeju-merge.md US-042
+    assert set(again["meal_gaps"][0]) == {"meal", "start_time", "end_time", "reason", "message_en", "message_ko"}
     assert "_seed" not in again["user_profile"]
 
 

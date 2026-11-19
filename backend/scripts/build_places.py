@@ -154,6 +154,28 @@ def in_bounds(lat: float, lng: float) -> bool:
     return BOUNDS["latMin"] <= lat <= BOUNDS["latMax"] and BOUNDS["lngMin"] <= lng <= BOUNDS["lngMax"]
 
 
+def add_korean_descriptions(places: list[dict]) -> None:
+    """tasks/prd-random-jeju-merge.md US-041: description_ko / description_ko_status from data/seed/places_ko.csv
+    (made by scripts/translate_places.py). A row is used only while it was made from the current description_en
+    (its `src` hash matches); otherwise the place has no Korean text until the script runs again."""
+    path = SEED / "places_ko.csv"
+    rows: dict[int, dict] = {}
+    if path.exists():
+        with path.open(encoding="utf-8", newline="") as f:
+            rows = {int(r["id"]): r for r in csv.DictReader(f)}
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from translate_places import text_hash   # same folder; the hash the frontend also uses
+    stale = 0
+    for p in places:
+        r = rows.get(p["id"])
+        ok = bool(r) and r["src"] == text_hash((p.get("description_en") or "").strip()) and r["description_ko"].strip()
+        stale += bool(r) and not ok
+        p["description_ko"] = r["description_ko"].strip() if ok else None
+        p["description_ko_status"] = r["status"] if ok else None
+    print(f"korean descriptions: {sum(1 for p in places if p['description_ko'])} of {len(places)}"
+          f"{f' ({stale} out of date: run translate_places.py)' if stale else ''}")
+
+
 def main() -> int:
     acc = {int(r["place_id"]): r for r in read("place_accessibility.csv")}
     food = {int(r["place_id"]): r for r in read("food_options.csv")}
@@ -248,6 +270,7 @@ def main() -> int:
             "text_ko": c["text_ko"].strip(),
         })
 
+    add_korean_descriptions(places)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "places.json").write_text(json.dumps(places, ensure_ascii=False, indent=2), encoding="utf-8")
     (OUT / "phrase_cards.json").write_text(json.dumps(cards, ensure_ascii=False, indent=2), encoding="utf-8")

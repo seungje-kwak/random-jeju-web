@@ -191,6 +191,8 @@ export const contentHelp = (locale: "zh" | "ja" | "ko") => locale === "ko"
 export function localizedReason(item: CourseItem, locale: Locale): { text: string; hasTranslation: boolean; original: string } {
   const original = item.reason_en?.trim() ?? "";
   if (locale === "en") return { text: original, hasTranslation: true, original };
+  // US-042: the server's own Korean reason (rule sentence or the LLM's), when the course has one
+  if (locale === "ko" && item.reason_ko?.trim()) return { text: item.reason_ko.trim(), hasTranslation: true, original };
   if (locale === "ko") {
     const translated: string[] = [];
     const sentences = original.match(/[^.!?]+[.!?]/g)?.map(x => x.trim()) ?? [];
@@ -228,6 +230,8 @@ export function localizedReason(item: CourseItem, locale: Locale): { text: strin
 export function localizedDescription(place: Place, locale: Locale): { text: string; hasTranslation: boolean; original: string } {
   const original = place.description_en?.trim() ?? "";
   if (locale === "en") return { text: original, hasTranslation: true, original };
+  // US-041: the Korean description stored with the place (reviewed or machine-translated once)
+  if (locale === "ko" && place.description_ko?.trim()) return { text: place.description_ko.trim(), hasTranslation: true, original };
   if (locale === "ko") return { text: `${localizedCategory(place.category, "ko")}에 해당하는 장소예요. 자세한 정보는 영어 소개를 확인해 주세요.`, hasTranslation: false, original };
   // Display a verified category-level summary, never an invented translation of the source description.
   const category = localizedCategory(place.category, locale);

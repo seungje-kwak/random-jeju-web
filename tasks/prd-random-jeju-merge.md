@@ -393,23 +393,23 @@
 **설명:** 국내 사용자로서, 모든 장소 설명을 한국어로 읽고 싶다.
 
 **완료 기준:**
-- [ ] `places`에 `description_ko text`, `description_ko_status text check (in ('reviewed','machine'))`를 더한다
-- [ ] `frontend/lib/content/descriptions.ko.ts`의 검수된 번역(27곳)을 `reviewed`로 넣는다
-- [ ] `scripts/translate_places.py`가 나머지 장소의 `description_en`을 LLM으로 한 번 번역해 `data/seed/places_ko.csv`에 저장하고, `seed_supabase.py`가 그것을 `machine`으로 넣는다. 고유명사(장소 이름)는 `name_ko`를 쓰게 프롬프트에 준다
-- [ ] 언어가 ko이면 `description_ko ?? description_en`을 보여준다. `machine`이면 "자동 번역" 작은 표시를 단다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `places`에 `description_ko text`, `description_ko_status text check (in ('reviewed','machine'))`를 더한다 (M1의 `0002_merge.sql`)
+- [x] `frontend/lib/content/descriptions.ko.ts`의 검수된 번역을 `reviewed`로 넣는다. 실제로는 66곳이었고, 영어 원문의 해시(프론트와 같은 FNV-1a)가 지금 원문과 맞는 것만 쓴다 (66곳 모두 맞음)
+- [x] `scripts/translate_places.py`가 나머지 장소의 `description_en`을 LLM으로 한 번 번역해 `data/seed/places_ko.csv`(id, status, src 해시, 번역)에 저장하고, `build_places.py`가 `places.json`에, `seed_supabase.py`가 DB에 넣는다. 고유명사(장소 이름)는 `name_ko`를 쓰게 프롬프트에 준다. 2026-11-19: Gemini(`gemini-3.1-flash-lite`)로 999곳, 거부 0건. 영어 원문이 바뀌면 그 장소만 다시 번역한다 (src 해시)
+- [x] 언어가 ko이면 `description_ko ?? description_en`을 보여준다. `machine`이면 "기계 번역 · 영어 원문" 접힘을 달아 원문을 볼 수 있다. 지도 하단 카드도 같다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19: 새 랜덤 코스 7곳 모두 한국어 소개, "영어 소개를 확인해 주세요" 안내가 화면에서 사라짐, 영어로 바꾸면 원문)
 
 #### US-042: 코스 추천 이유와 빈 식사 시간 문구 한국어 (P0, M6)
 **설명:** 국내 사용자로서, 왜 이 장소를 넣었는지 한국어로 보고 싶다.
 
 **완료 기준:**
-- [ ] `course_items`에 `reason_ko text`를 더한다. 규칙 플래너의 이유 문장(`planner._rule_reason`)과 빈 식사 시간 문구에 한국어 틀을 더한다
-- [ ] LLM 출력 스키마(`LLMItem`)에 `reason_ko`(1–300자)를 더하고 시스템 프롬프트에 "같은 내용을 자연스러운 한국어로"를 더한다. 비어 있으면 검증에서 `reason_en`만 쓰고 실패로 보지 않는다
-- [ ] `meal_gaps`의 각 항목에 `message_ko`를 더한다
-- [ ] 언어가 ko이면 `reason_ko`, `message_ko`를 먼저 쓴다. 없으면 지금처럼 번역 API를 쓴다
-- [ ] 기존 저장된 코스(`reason_ko` 없음)도 오류 없이 열린다
-- [ ] Typecheck/lint passes
+- [x] `course_items`에 `reason_ko text`를 더한다 (`0002_merge.sql`). 규칙 이유는 `planner.rule_reason_ko`가 만든다. 문장은 그동안 프론트가 영어 규칙 문장을 바꿔 보여주던 한국어와 같게 했다. 모든 정류장 행은 `_rows` 한 곳을 지나므로 거기서 채운다 (LLM이 쓴 한국어가 있으면 그것, 없으면 규칙 문장)
+- [x] LLM 출력 스키마에 `reason_ko`를 더하고(Gemini·Claude 스키마 모두 필수 항목, Pydantic은 선택), 시스템 프롬프트에 "같은 내용을 자연스러운 한국어(해요체)로, 장소 이름은 name_ko"를 더했다. 후보에 `name_ko`도 보낸다. 비어 있으면 규칙 문장으로 채우고 실패로 보지 않는다. 실제 Gemini 호출로 확인 ("수산저수지에서 … 평화로운 자연을 즐겨보세요.")
+- [x] `meal_gaps`의 각 항목에 `message_ko`를 더한다 (`planner.gap_row`)
+- [x] 언어가 ko이면 `reason_ko`를 먼저 쓴다. 없으면(예전 코스) 지금처럼 프론트의 규칙 문장 변환, 그다음 번역 API. 빈 식사 시간 카드는 이미 4개 언어로 검수된 문구가 프론트에 있어 그것을 계속 쓴다 (`message_ko`는 API에만)
+- [x] 기존 저장된 코스(`reason_ko` 없음)도 오류 없이 열린다 (응답에서 `reason_ko: null`)
+- [x] Typecheck/lint passes (테스트 `tests/test_korean.py` 10개)
 
 ### 4.6 전환
 

@@ -21,7 +21,7 @@ data/                  장소 시드 CSV, 데모 코스
 | M3 | 랜덤 지점 + 주변 코스 | 완료 (2026-11-19). `/random` 화면, 랜덤 코스, 한국어 기본, 유료 잠금 끔. 배포 환경의 응답 시간 측정은 Vercel·Railway 연결 뒤 |
 | M4 | 사진 업로드, 사진 지도, 피드 | 완료 (2026-11-19). `/feed`, `/map`, `/upload`, 4개 탭, 좋아요·댓글·닉네임. 글·댓글 삭제(US-028)와 게시글 화면(US-029)은 P1 |
 | M5 | 방문 인증 | 완료 (2026-11-19). 랜덤 지점 500m·장소 200m(넓은 장소 500m)·7일 안의 사진이면 "다녀옴" 인증, 코스·여행 모드·피드에 표시 |
-| M6 | 한국어 완성 | |
+| M6 | 한국어 완성 | 완료 (2026-11-19). 장소 1,065곳 한국어 소개(검수 66, LLM 번역 999), 추천 이유·빈 식사 시간 문구 한국어 |
 | M7 | Ktor 서버 종료 | |
 
 ## 마이그레이션
@@ -33,7 +33,12 @@ data/                  장소 시드 CSV, 데모 코스
 - `0004_posts.sql`: 사진 게시글·피드·좋아요·댓글·사진 지도 DB 함수 (PRD FR-11–FR-18). 좋아요·댓글 수를 한 번 다시 센다. 2026-11-19 적용.
 - `0005_visits.sql`: 방문 인증 저장(`add_visit`, 코스·장소당 한 번)과 코스별 인증 목록, 피드의 인증 배지 (PRD FR-19–FR-21). 2026-11-19 적용.
 
-장소 데이터는 `backend/scripts/seed_supabase.py`로 넣는다 (다시 실행해도 된다). 장소를 다시 넣었으면 `backend/scripts/mark_grids.py`도 다시 실행한다 (랜덤 지점을 뽑을 칸이 장소 위치에 따라 정해진다).
+장소 데이터 순서 (모두 다시 실행해도 된다):
+
+1. 장소 영어 설명을 고쳤거나 장소를 더했으면 `backend/scripts/translate_places.py` (바뀐 장소만 LLM으로 한국어 번역 → `data/seed/places_ko.csv`)
+2. `backend/scripts/build_places.py` (CSV → `backend/app/data/places.json`, 한국어 설명 포함)
+3. `backend/scripts/seed_supabase.py` (Supabase에 넣기)
+4. 장소 위치가 바뀌었으면 `backend/scripts/mark_grids.py` (랜덤 지점을 뽑을 칸이 장소 위치에 따라 정해진다)
 
 랜덤 코스 품질 평가 (Supabase 없이, 규칙 플래너): `backend/.venv/Scripts/python.exe backend/scripts/eval_random.py` → `backend/eval/random-rules.json`
 

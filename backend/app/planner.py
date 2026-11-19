@@ -638,7 +638,7 @@ def build_llm_input(cands: list[dict], ctx: TripCtx, fixed_first_id: Optional[in
             "reason": ctx.reason, "fixed_first_place_id": fixed_first_id, "keep_if_possible": ctx.keep_ids,
         }),
         "candidates": [{
-            "id": c["id"], "name_en": c["name_en"], "category": c["category"],
+            "id": c["id"], "name_en": c["name_en"], "name_ko": c["name_ko"], "category": c["category"],
             "description_en": c["description_en"], "lat": c["lat"], "lng": c["lng"],
             "avg_stay_min": c["avg_stay_min"],
             "min_stay_min": stay_range(c)[0], "max_stay_min": stay_range(c)[1],     # P1 US-P12
@@ -683,6 +683,7 @@ class Entry:
     stay_min: int
     reason_en: str = ""
     is_rest_stop: bool = False
+    reason_ko: str = ""                 # from the LLM; empty = the Korean rule sentence (US-042)
     meal: Optional[str] = None          # the meal this stop or free time is for
     not_before: Optional[int] = None    # earliest start: waiting happens before it
     arrive_by: Optional[int] = None     # latest start (FR-10: a filled meal stays filled)
@@ -761,7 +762,8 @@ def to_entries(items: list[LLMItem], by_id: dict[int, dict]) -> list[Entry]:
     out = []
     for i in items:
         lo, hi = stay_range(by_id[i.place_id])
-        out.append(Entry(i.place_id, min(max(i.stay_min, lo), hi), i.reason_en, bool(i.is_rest_stop)))
+        out.append(Entry(i.place_id, min(max(i.stay_min, lo), hi), i.reason_en, bool(i.is_rest_stop),
+                         reason_ko=(i.reason_ko or "").strip()))
     return out
 
 
@@ -883,6 +885,56 @@ GAP_MESSAGES = {
     "no_diet_match": "We couldn't find a {diet}-friendly restaurant in this area, so we kept {start}–{end} free for {meal}.",
     "none_nearby": "No restaurant we know is open near your stops at this time, so we kept {start}–{end} free for {meal}.",
 }
+# tasks/prd-random-jeju-merge.md US-042: the same messages in Korean (courses.meal_gaps[].message_ko)
+GAP_MESSAGES_KO = {
+    "no_diet_match": "이 지역에서 {diet} 식당을 찾지 못해서 {start}~{end}은 {meal} 시간으로 비워 두었어요.",
+    "none_nearby": "이 시간에 동선 근처에서 문을 연 식당을 찾지 못해서 {start}~{end}은 {meal} 시간으로 비워 두었어요.",
+}
+MEAL_KO = {"lunch": "점심", "dinner": "저녁"}
+DIET_KO = {"vegan": "비건", "vegetarian": "채식", "halal": "할랄", "none": ""}
+
+
+def gap_row(meal: str, reason: str, start: str, end: str, diet: str) -> dict:
+    """A free meal time (P1 FR-11) with its message in English and Korean."""
+    return {"meal": meal, "start_time": start, "end_time": end, "reason": reason,
+            "message_en": GAP_MESSAGES[reason].format(diet=diet, start=start, end=end, meal=meal),
+            "message_ko": GAP_MESSAGES_KO[reason].format(diet=DIET_KO.get(diet, diet), start=start, end=end,
+                                                         meal=MEAL_KO.get(meal, meal))}
+
+
+# US-042: Korean rule reasons. Same sentences the frontend used to make from the English ones
+# (frontend/lib/localized-place.ts localizedReason), so a course reads the same as before.
+INTEREST_KO = {"nature": "자연", "market": "시장 탐방", "cafe": "카페", "food": "로컬 맛집",
+               "culture": "문화와 역사", "photo": "사진 명소"}
+SINGULAR_KO = {"nature": "자연 속에서 쉬어가는 곳", "market": "현지 시장을 즐길 수 있는 곳",
+               "cafe": "카페에서 휴식하는 곳", "food": "제주 음식을 맛볼 수 있는 곳",
+               "culture": "문화와 역사를 만나는 곳", "photo": "기념사진을 남기기 좋은 곳"}
+
+
+def rule_reason_ko(p: dict, profile: dict, rest: bool) -> str:
+    """The Korean twin of _rule_reason, from the same facts (only true food options are mentioned)."""
+    acc, f = p["accessibility"], p.get("food_options")
+    parts: list[str] = []
+    if f:
+        parts.append("카페에서 편하게 쉬어갈 수 있어요." if p["category"] == "cafe" else "식사를 즐기기 좋은 장소예요.")
+        if f.get("solo_ok") is True:
+            parts.append("혼자 주문하기 편해요.")
+        diet = profile.get("diet", "none")
+        if diet in ("vegan", "vegetarian", "halal") and f.get(diet) is True:
+            parts.append(f"{DIET_KO[diet]} 메뉴 선택지가 있어요.")
+        if f.get("english_menu") is True:
+            parts.append("영어 메뉴가 있어요.")
+    elif p["category"] in profile.get("interests", []):
+        parts.append(f"{INTEREST_KO[p['category']]}에 관심이 있다고 하셔서 추천했어요.")
+    else:
+        parts.append(f"{SINGULAR_KO[p['category']]}으로 일정을 채워보세요.")
+    if (profile.get("conditions") or {}).get("indoor_only") and acc["indoor"]:
+        parts.append("실내 공간이라 비 오는 날에도 방문하기 좋아요.")
+    elif acc["terrain"] == "flat" and acc["walking_level"] == 1:
+        parts.append("평탄한 지형이라 걷는 부담이 적어요.")
+    if rest:
+        parts.append("앉아서 잠시 쉬어가기 좋아요.")
+    return " ".join(parts)[:200]
 
 
 def _prev_place(entries: list[Entry], pos: int, by_id: dict[int, dict], ctx: TripCtx) -> Optional[dict]:
@@ -1071,12 +1123,12 @@ def _rows(entries: list[Entry], by_id: dict[int, dict], ctx: TripCtx) -> tuple[l
     for e, s in zip(entries, timeline(entries, by_id, ctx)):
         if e.is_gap:
             start, end = to_hhmm(s.start), to_hhmm(s.end)
-            gaps.append({"meal": e.meal, "start_time": start, "end_time": end, "reason": e.gap_reason,
-                         "message_en": GAP_MESSAGES[e.gap_reason].format(
-                             diet=ctx.profile["diet"], start=start, end=end, meal=e.meal)})
+            gaps.append(gap_row(e.meal, e.gap_reason, start, end, ctx.profile["diet"]))
             continue
+        p = by_id[e.place_id]
         rows.append({"place_id": e.place_id, "start_time": to_hhmm(s.start), "stay_min": e.stay_min,
                      "move_method": s.move_method, "move_min": s.move_min, "reason_en": e.reason_en[:300],
+                     "reason_ko": (e.reason_ko or rule_reason_ko(p, ctx.profile, bool(e.is_rest_stop)))[:300],
                      "is_rest_stop": bool(e.is_rest_stop)})
     return rows, gaps
 
@@ -1468,9 +1520,7 @@ def replan(places: list[dict], course: dict, items: list[dict], reason: str, cur
             # US-P08: no restaurant to go to now -> 45 free minutes from now, then the rest of the day
             meal = _hungry_gap_meal(start)
             gap_end = start + config.MEAL_GAP_MIN
-            new_gaps = [{"meal": meal, "start_time": to_hhmm(start), "end_time": to_hhmm(gap_end),
-                         "reason": "none_nearby", "message_en": GAP_MESSAGES["none_nearby"].format(
-                             diet=profile["diet"], start=to_hhmm(start), end=to_hhmm(gap_end), meal=meal)}]
+            new_gaps = [gap_row(meal, "none_nearby", to_hhmm(start), to_hhmm(gap_end), profile["diet"])]
             new_rows = []
             if end_min - gap_end >= 30:
                 rest = replace(ctx, start_min=gap_end, end_min=max(end_min, gap_end + 60), fixed_first_category=None,

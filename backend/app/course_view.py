@@ -6,7 +6,7 @@ from typing import Optional
 from . import config
 
 ITEM_KEYS = ("order", "place_id", "start_time", "stay_min", "move_method", "move_min",
-             "reason_en", "is_rest_stop", "status")
+             "reason_en", "reason_ko", "is_rest_stop", "status")   # reason_ko: US-042 (null on older courses)
 GENERIC_FOOD_CARD_SITUATION = "restaurant"
 GENERIC_FOOD_CARD_LIMIT = 3
 
