@@ -45,7 +45,9 @@ data/                  장소 시드 CSV, 데모 코스
 
 남은 일:
 
-1. **카카오맵:** 카카오가 Vercel 주소를 거부한다 (`domain mismatched! caller=https://random-jeju-web.vercel.app`). 같은 키가 `http://localhost:3000`에서는 동작한다. 카카오 개발자 콘솔에서 이 앱의 JavaScript 키(Web 플랫폼)에 `https://random-jeju-web.vercel.app`을 사이트 도메인으로 더한다. 도메인 검사는 실행할 때 하므로 다시 빌드하지 않아도 된다
+1. **카카오맵:** 카카오가 Vercel 주소를 거부한다 (`domain mismatched! caller=https://random-jeju-web.vercel.app`). 지금 쓰는 JavaScript 키(끝 `8f7a`)는 해커톤 MyPace 프론트에서 그대로 가져온 키라서, 해커톤용 카카오 앱의 키다. 그 앱에 등록된 도메인은 `http://localhost:3000`과 해커톤 Vercel 주소 `https://frontend-iota-seven-41.vercel.app`이다 (2026-11-19 확인). 둘 중 하나로 고친다:
+   - 이 키를 가진 카카오 앱(해커톤 Vercel 주소가 등록된 앱)에 `https://random-jeju-web.vercel.app`을 더한다. 도메인 검사는 실행할 때 하므로 다시 빌드하지 않아도 된다
+   - 또는 Random Jeju용 카카오 앱의 **JavaScript 키**(Android가 쓰는 네이티브 앱 키가 아니다)를 Vercel과 `frontend/.env.local`의 `NEXT_PUBLIC_KAKAO_MAP_KEY`에 넣고 다시 빌드한다. 그 앱에 `http://localhost:3000`도 등록한다
 2. 배포된 화면에서 굴리기 → 코스 → 올리기 → 인증 흐름을 한 번 해 본다
 
 ## 마이그레이션
