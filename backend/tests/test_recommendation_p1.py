@@ -189,7 +189,7 @@ def body(profile, area="pyoseon", start="11:00", end="20:00") -> dict:
     return {"user_profile": profile, "area_id": area, "start_time": start, "end_time": end}
 
 
-def test_vegan_course_meal_gaps_come_back_the_same(api):
+def test_vegan_course_meal_gaps_come_back_the_same(api, paywall_on):
     client, fake = api
     r = client.post("/courses", json=body(VEGAN))
     assert r.status_code == 201
@@ -205,7 +205,7 @@ def test_vegan_course_meal_gaps_come_back_the_same(api):
     assert "_seed" not in again["user_profile"]
 
 
-def test_free_course_hides_free_times_after_the_last_visible_stop():
+def test_free_course_hides_free_times_after_the_last_visible_stop(paywall_on):
     items = [{"order": n, "place_id": n, "start_time": t, "stay_min": 60, "move_method": None, "move_min": None,
               "reason_en": "x", "is_rest_stop": False, "status": "upcoming"}
              for n, t in enumerate(["10:00", "11:00", "12:45", "15:00"], start=1)]

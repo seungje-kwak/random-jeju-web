@@ -38,6 +38,10 @@ class Store(Protocol):
     def replace_course(self, course: dict, items: list[dict]) -> None: ...
     def get_user(self, user_id: str) -> Optional[dict]: ...
     def save_nickname(self, user_id: str, nickname: str) -> dict: ...
+    def draw_point(self) -> Optional[dict]: ...
+    def add_location(self, row: dict) -> dict: ...
+    def get_location(self, location_id: int) -> Optional[dict]: ...
+    def link_location(self, location_id: int, course_id: str) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +190,23 @@ class SupabaseStore:
         rows = (self._sb.table("users").upsert({"id": user_id, "nickname": nickname}, on_conflict="id")
                 .execute().data)
         return rows[0]
+
+    # --- random points (RandomJeju tables grids / locations; FR-1 - FR-3, FR-9) ---
+    def draw_point(self) -> Optional[dict]:
+        """{grid_id, lat, lng, adm_nm} from the DB function random_point(), or None when no cell is usable."""
+        rows = self._sb.rpc("random_point", {}).execute().data
+        return rows[0] if rows else None
+
+    def add_location(self, row: dict) -> dict:
+        return self._sb.table("locations").insert(row).execute().data[0]
+
+    def get_location(self, location_id: int) -> Optional[dict]:
+        rows = (self._sb.table("locations").select("location_id, lat, lng, address, grid_id, user_id, course_id")
+                .eq("location_id", location_id).limit(1).execute().data)
+        return rows[0] if rows else None
+
+    def link_location(self, location_id: int, course_id: str) -> None:
+        self._sb.table("locations").update({"course_id": course_id}).eq("location_id", location_id).execute()
 
 
 _store: Optional[Store] = None

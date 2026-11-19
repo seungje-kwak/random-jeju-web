@@ -1,6 +1,8 @@
 """Build the `Course` response (9.3) and apply the free 3-stop rule (9.6) in one place."""
 from __future__ import annotations
 
+from typing import Optional
+
 from . import config
 
 ITEM_KEYS = ("order", "place_id", "start_time", "stay_min", "move_method", "move_min",
@@ -36,10 +38,35 @@ def _visible_gaps(gaps: list[dict], visible: list[dict], locked: int) -> list[di
     return [g for g in gaps if int(g["start_time"][:2]) * 60 + int(g["start_time"][3:]) < end]
 
 
-def build_course(course: dict, items: list[dict], places: list[dict], cards: list[dict]) -> dict:
+def _km(a: dict, b: dict) -> float:
+    from .planner import km_between
+    from .random_spots import round_km
+    return round_km(km_between(a, b))
+
+
+def random_origin(course: dict, origin: Optional[dict], by_id: dict[int, dict]) -> Optional[dict]:
+    """tasks/prd-random-jeju-merge.md FR-10: where a random course came from. `origin`: its locations row."""
+    if course.get("kind") != "random" or origin is None:
+        return None
+    hub = by_id.get(course["user_profile"].get("_hub_id"))
+    point = {"lat": origin["lat"], "lng": origin["lng"]}
+    return {
+        "location_id": origin["location_id"], "lat": origin["lat"], "lng": origin["lng"],
+        "adm_nm": (origin.get("address") or "").split()[-1] if origin.get("address") else None,
+        "area_id": course["user_profile"].get("area_id"),
+        "snap_km": _km(point, hub) if hub else None,
+        "hub_place_id": hub["id"] if hub else None,
+        "hub_name_ko": hub["name_ko"] if hub else None,
+        "hub_name_en": hub["name_en"] if hub else None,
+    }
+
+
+def build_course(course: dict, items: list[dict], places: list[dict], cards: list[dict],
+                 origin: Optional[dict] = None, visits: Optional[list[dict]] = None) -> dict:
     by_id = {p["id"]: p for p in places}
     items = sorted((i for i in items if i["place_id"] in by_id), key=lambda i: i["order"])
-    premium = course["tier"] == "premium"
+    # US-017: with the paywall off every course is shown whole (as a bought one was)
+    premium = course["tier"] == "premium" or not config.PAYWALL_ENABLED
     total = len(items)
     visible = items if premium else items[: config.FREE_ITEM_LIMIT]   # hidden items never leave the server
     out_items = []
@@ -55,11 +82,15 @@ def build_course(course: dict, items: list[dict], places: list[dict], cards: lis
     gaps = sorted(course.get("meal_gaps") or [], key=lambda g: g["start_time"])
     return {
         "id": course["id"],
-        "tier": course["tier"],
+        "tier": "premium" if premium else "free",
         "created_at": course["created_at"],
         "user_profile": _public_profile(course["user_profile"]),
         "total_items": total,
         "locked_count": locked,
         "items": out_items,
         "meal_gaps": _visible_gaps(gaps, visible, locked),
+        # tasks/prd-random-jeju-merge.md FR-10
+        "kind": course.get("kind") or "pick",
+        "random_origin": random_origin(course, origin, by_id),
+        "visits": visits or [],
     }

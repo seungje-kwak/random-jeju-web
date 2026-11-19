@@ -240,6 +240,9 @@ class TripCtx:
     # tasks/prd-travel-range.md FR-5: a shuffle's lists of hub centres to stay away from, tried in order
     # (the first that leaves a hub is used; when none does, no hub is avoided). A new course has none.
     avoid: list[list[dict]] = field(default_factory=list)
+    # tasks/prd-random-jeju-merge.md FR-6: a random course's hub centre (random_course picks it). Used as the
+    # anchor instead of a hub drawn by density. None for every other course.
+    near: Optional[dict] = None
     _moves: dict = field(default_factory=dict, repr=False)
 
     def move(self, a: dict, b: dict) -> tuple[str, int]:
@@ -408,6 +411,8 @@ def pick_anchor(pool: list[dict], ctx: TripCtx) -> Optional[dict]:
     the top 3, evenly" is gone). Records the hub count (eval) and how many avoid lists were given up."""
     if ctx.origin is not None:
         return ctx.origin
+    if ctx.near is not None:          # random course: the hub nearest the random point (FR-6)
+        return ctx.near
     if not pool:
         return None
     hubs = find_hubs(pool, ctx)
@@ -1220,6 +1225,75 @@ def new_course(places: list[dict], profile_in: dict, start_time: str, end_time: 
     items = [{"course_id": course_id, "order": n, **r, "status": "current" if n == 1 else "upcoming"}
              for n, r in enumerate(rows, start=1)]
     return course, items
+
+
+# ----------------------------------------------------------------------------- random courses
+# tasks/prd-random-jeju-merge.md FR-4 - FR-8: a day near a random point instead of in a picked area.
+def hub_pool(places: list[dict], ctx: TripCtx, min_candidates: int) -> list[dict]:
+    """The places a new course's hubs are found among: prepare()'s filters (F-1 - F-6, F-8, F-10, with the
+    walking-level fallback) and F-7, for a course with no fixed first stop. Kept in step with prepare()."""
+    def filtered(level_bonus: int) -> list[dict]:
+        return hours_filter(base_filter(places, ctx.profile, ctx.exclude_ids, level_bonus=level_bonus),
+                            ctx.start_min, ctx.end_min)
+
+    base = filtered(0)
+    if len(base) < min_candidates:
+        base = filtered(1)
+    return base if ctx.meals else [p for p in base if p["category"] != "food"]
+
+
+@dataclass
+class RandomHub:
+    hub: Hub
+    area_id: str
+    km: float          # straight line from the random point to the hub centre (FR-7 snap_km)
+
+
+def random_hub(places: list[dict], profile_in: dict, start: int, end: int, point: dict,
+               selectable: set[str], seed: int) -> Optional[RandomHub]:
+    """FR-4, FR-6: across every selectable area, the hubs this traveler's filters leave. The hub whose centre
+    is nearest the point, unless a hub that can serve every needed meal is at most RANDOM_FED_DETOUR_KM
+    farther: then the nearest such hub. (Always preferring a fed hub sent vegans from Hallim to Jeju City,
+    median 9.9 km in the 2026-11-19 eval; an unfed hub gets a free meal-time card instead, P1 FR-11.)
+    No randomness here: the point already was random. None when no area has a hub."""
+    found: list[tuple[Hub, str, bool]] = []
+    for area_id in sorted(selectable):
+        ctx = _course_ctx(profile_in, start, end, area_id, seed)
+        pool = hub_pool(in_area(places, area_id), ctx, min_candidates=2)
+        found.extend((h, area_id, h.fed(ctx.meals)) for h in find_hubs(pool, ctx))
+    if not found:
+        return None
+
+    def key(f: tuple[Hub, str, bool]) -> tuple[float, str, int]:
+        return km_between(point, f[0].place), f[1], f[0].place["id"]
+
+    nearest = min(found, key=key)
+    fed = [f for f in found if f[2] and key(f)[0] <= key(nearest)[0] + config.RANDOM_FED_DETOUR_KM]
+    hub, area_id, _ = min(fed, key=key) if fed else nearest
+    return RandomHub(hub, area_id, km_between(point, hub.place))
+
+
+def random_course(places: list[dict], profile_in: dict, start_time: str, end_time: str, point: dict,
+                  selectable: set[str], seed: Optional[int] = None,
+                  stats: Optional[dict] = None) -> tuple[dict, list[dict], RandomHub]:
+    """FR-5: new_course in the area of random_hub's hub, anchored on that hub. `point`: {lat, lng}.
+    The caller adds owner_id / origin_location_id. 409 NO_CANDIDATES when nothing fits (FR-8: the caller
+    does not draw again, so the point the traveler saw and the course stay together)."""
+    start, end = check_time_window(start_time, end_time)
+    seed = new_seed() if seed is None else seed
+    picked = random_hub(places, profile_in, start, end, point, selectable, seed)
+    if picked is None:
+        raise ApiError(409, "NO_CANDIDATES", "No places fit these choices.")
+    ctx = _course_ctx(profile_in, start, end, picked.area_id, seed, stats)
+    ctx.near = picked.hub.place
+    rows, gaps = run_pipeline(in_area(places, picked.area_id), ctx, min_candidates=2)
+    course_id = str(uuid.uuid4())
+    from .store import now_iso
+    course = {"id": course_id, "user_profile": ctx.profile, "tier": "free", "created_at": now_iso(),
+              "meal_gaps": gaps, "kind": "random"}
+    items = [{"course_id": course_id, "order": n, **r, "status": "current" if n == 1 else "upcoming"}
+             for n, r in enumerate(rows, start=1)]
+    return course, items, picked
 
 
 def seen_hubs(profile: dict, items: list[dict], by_id: dict[int, dict]) -> tuple[list[int], Optional[int], list[dict], list[dict]]:

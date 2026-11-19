@@ -52,6 +52,14 @@ class CreateCourseRequest(BaseModel):
     end_time: str
 
 
+class RandomCourseRequest(BaseModel):
+    """tasks/prd-random-jeju-merge.md FR-9: like CreateCourseRequest, with the drawn point instead of an area."""
+    location_id: int
+    user_profile: UserProfileIn
+    start_time: str
+    end_time: str
+
+
 class ReplanRequest(BaseModel):
     reason: ReplanReason
     current_order: int = Field(ge=1)

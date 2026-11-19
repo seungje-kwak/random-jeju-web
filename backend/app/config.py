@@ -143,3 +143,12 @@ MAX_2OPT_ROUNDS = 50                # FR-16
 LLM_TIMEOUT_SEC = 20
 MAX_CANDIDATES = 20
 FREE_ITEM_LIMIT = 3
+# US-017: false = every course shows all its stops and phrase cards, and there is nothing to buy.
+PAYWALL_ENABLED = _bool("PAYWALL_ENABLED", False)
+
+# --- random points (tasks/prd-random-jeju-merge.md FR-0 - FR-3) ---
+GRID_MIN_LAND_SHARE = 0.5   # FR-0 (a): cells less than half land are skipped
+GRID_REACH_KM = 5.0         # FR-0 (c): a dense place must be this close to the cell's land point
+PREVIEW_RADIUS_KM = 5.0     # FR-3: places shown under a fresh random point
+PREVIEW_COUNT = 3
+RANDOM_FED_DETOUR_KM = 3.0  # FR-6: how much farther a hub with a restaurant for every meal may be

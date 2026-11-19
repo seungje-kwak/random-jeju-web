@@ -8,11 +8,12 @@ from typing import Optional
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import areas, config, planner
-from .auth import User, current_user
+from . import areas, config, planner, random_spots
+from .auth import User, current_user, optional_user
 from .course_view import build_course
 from .errors import ApiError
-from .schemas import CreateCourseRequest, NicknameRequest, PurchaseRequest, ReplanRequest, ReportRequest
+from .schemas import (CreateCourseRequest, NicknameRequest, PurchaseRequest, RandomCourseRequest, ReplanRequest,
+                      ReportRequest)
 from .store import get_store
 
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +41,10 @@ def _course_response(course_id: str) -> dict:
     course = store.get_course(course_id)
     if course is None:
         raise ApiError(404, "COURSE_NOT_FOUND", "Course not found.")
-    return build_course(course, store.get_items(course_id), store.list_places(), store.list_phrase_cards())
+    origin = store.get_location(course["origin_location_id"]) if course.get("origin_location_id") else None
+    # visits (FR-10) come with the check-ins of M5; until then a course has none
+    return build_course(course, store.get_items(course_id), store.list_places(), store.list_phrase_cards(),
+                        origin=origin, visits=[])
 
 
 @app.get("/")
@@ -64,13 +68,51 @@ def list_places(area_id: Optional[str] = None) -> dict:
 
 
 @app.post("/courses", status_code=201)
-def create_course(req: CreateCourseRequest) -> dict:
+def create_course(req: CreateCourseRequest, user: Optional[User] = Depends(optional_user)) -> dict:
     store = get_store()
     places = store.list_places()
     areas.check_area(req.area_id, store.list_areas(), places)
     course, items = planner.new_course(places, req.user_profile.model_dump(), req.start_time, req.end_time,
                                        req.area_id)
+    if user is not None:              # FR-10: a signed-in traveler owns the course
+        course["owner_id"] = user.id
     store.create_course(course, items)
+    return _course_response(course["id"])
+
+
+# --- random points and random courses (tasks/prd-random-jeju-merge.md FR-1 - FR-10) ---
+@app.post("/random-points", status_code=201)
+def draw_random_point(user: User = Depends(current_user)) -> dict:
+    """FR-3: one point on usable land, saved for this traveler, with what is near it. No LLM call."""
+    store = get_store()
+    row = store.draw_point()
+    if row is None:
+        raise ApiError(503, "NO_RANDOM_CELLS", "There is nowhere to draw from right now.")
+    places = store.list_places()
+    selectable = random_spots.selectable_areas(store.list_areas(), places)
+    point = {"lat": row["lat"], "lng": row["lng"]}
+    near = random_spots.nearby(point, places, random_spots.cached_plain_hubs(places, selectable))
+    adm = (row.get("adm_nm") or "").split()[-1] if row.get("adm_nm") else None
+    loc = store.add_location({"lat": row["lat"], "lng": row["lng"], "address": adm, "grid_id": row["grid_id"],
+                              "user_id": user.id})
+    return {"location_id": loc["location_id"], "lat": row["lat"], "lng": row["lng"], "adm_nm": adm, **near}
+
+
+@app.post("/random-courses", status_code=201)
+def create_random_course(req: RandomCourseRequest, user: User = Depends(current_user)) -> dict:
+    """FR-9: a day near the traveler's own drawn point. FR-8: no silent second draw on 409."""
+    store = get_store()
+    loc = store.get_location(req.location_id)
+    if loc is None or loc.get("user_id") != user.id:
+        raise ApiError(404, "LOCATION_NOT_FOUND", "That random point was not found.")
+    places = store.list_places()
+    selectable = random_spots.selectable_areas(store.list_areas(), places)
+    course, items, _ = planner.random_course(places, req.user_profile.model_dump(), req.start_time, req.end_time,
+                                             {"lat": loc["lat"], "lng": loc["lng"]}, selectable)
+    course["owner_id"] = user.id
+    course["origin_location_id"] = loc["location_id"]
+    store.create_course(course, items)
+    store.link_location(loc["location_id"], course["id"])
     return _course_response(course["id"])
 
 

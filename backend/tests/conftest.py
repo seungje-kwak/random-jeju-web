@@ -46,3 +46,9 @@ def _deterministic(monkeypatch):
     monkeypatch.setattr(planner, "new_seed", lambda: 1)
     monkeypatch.setattr(config, "REQUIRE_VERIFIED", False)
     monkeypatch.setattr(planner, "today_kst_dow", lambda: "none")
+
+
+@pytest.fixture()
+def paywall_on(monkeypatch):
+    """The hackathon's free 3-stop preview (tasks/prd-random-jeju-merge.md US-017 turns it off by default)."""
+    monkeypatch.setattr(config, "PAYWALL_ENABLED", True)

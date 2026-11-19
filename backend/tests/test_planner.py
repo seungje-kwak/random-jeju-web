@@ -175,7 +175,7 @@ def test_tired_keeps_only_the_easiest_walking_level(places, by_id, course):
 
 
 # ----------------------------------------------------------------------------- US-11 / US-12 response shape
-def test_free_course_shows_three_stops_and_leaks_nothing(places, by_id, course):
+def test_free_course_shows_three_stops_and_leaks_nothing(places, by_id, course, paywall_on):
     c, items = course
     out = build_course(c, items, places, [])
     assert [i["order"] for i in out["items"]] == [1, 2, 3]
