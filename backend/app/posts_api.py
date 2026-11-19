@@ -144,7 +144,7 @@ def create_post(image: UploadFile = File(...), meta: str = Form(...), user: User
     if len(data) > config.PHOTO_MAX_BYTES:
         raise ApiError(413, "FILE_TOO_LARGE", "The photo is too large.")
     m = _meta(meta)
-    since = (datetime.now(timezone.utc) - timedelta(days=1)).replace(tzinfo=None).isoformat(timespec="seconds")
+    since = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     if store.uploads_since(user.id, since) >= config.UPLOADS_PER_DAY:
         raise ApiError(429, "UPLOAD_LIMIT", f"You can post up to {config.UPLOADS_PER_DAY} photos a day.")
     processed = process_image(data)

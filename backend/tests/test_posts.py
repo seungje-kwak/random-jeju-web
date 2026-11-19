@@ -109,10 +109,10 @@ def test_too_many_pixels_is_413(monkeypatch):
 
 
 @pytest.mark.parametrize("value,want", [
-    ("2026-11-20T14:03:00+09:00", "2026-11-20T14:03:00"),
-    ("2026-11-20T05:03:00Z", "2026-11-20T14:03:00"),
-    ("2026-11-20T05:03:00+00:00", "2026-11-20T14:03:00"),
-    ("2026-11-20T14:03:00", "2026-11-20T14:03:00"),
+    ("2026-11-20T14:03:00+09:00", "2026-11-20T14:03:00+09:00"),
+    ("2026-11-20T05:03:00Z", "2026-11-20T14:03:00+09:00"),
+    ("2026-11-20T05:03:00+00:00", "2026-11-20T14:03:00+09:00"),
+    ("2026-11-20T14:03:00", "2026-11-20T14:03:00+09:00"),
     ("2026:11:20 14:03:00", None),
     ("", None), (None, None),
 ])
@@ -231,7 +231,7 @@ def test_post_a_photo(client, fake):
     assert p["image_url"].endswith(".jpg") and "/thumbnails/" in p["thumb_url"]
     args = fake.posts[0]["_args"]
     assert args["p_lat"] == 33.456789                                  # stored exactly (for check-ins)
-    assert args["p_image_time"] == "2026-11-20T14:03:00" and args["p_user"] == me
+    assert args["p_image_time"] == "2026-11-20T14:03:00+09:00" and args["p_user"] == me
     assert len(fake.files) == 2 and all(len(Image.open(io.BytesIO(b)).getexif()) == 0 for b in fake.files.values())
 
 

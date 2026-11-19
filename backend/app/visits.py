@@ -51,11 +51,14 @@ def parse_time(value) -> datetime:
 
 def judge(lat: Optional[float], lng: Optional[float], source: Optional[str], taken_kst: Optional[datetime],
           courses: list[CourseFacts], now: datetime) -> list[Candidate]:
-    """FR-20. `taken_kst`: the photo's capture time in Korea time without a zone (as photos.image_time
-    stores it); None = the upload time `now` (aware)."""
+    """FR-20. `taken_kst`: the photo's capture time, with its zone (photos.taken_at_kst) or without one (then it
+    is Korea time); None = the upload time `now` (aware)."""
     if lat is None or lng is None or source not in COUNTED_SOURCES:
         return []
-    taken = taken_kst.replace(tzinfo=KST) if taken_kst else now
+    if taken_kst is None:
+        taken = now
+    else:
+        taken = taken_kst if taken_kst.tzinfo else taken_kst.replace(tzinfo=KST)
     leeway = timedelta(minutes=config.VISIT_CLOCK_LEEWAY_MIN)
     out: list[Candidate] = []
     for c in courses:

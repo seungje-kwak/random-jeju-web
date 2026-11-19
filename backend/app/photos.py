@@ -91,7 +91,8 @@ _OFFSET = re.compile(r"(Z|[+-]\d\d:?\d\d)$")
 
 def taken_at_kst(value: Optional[str]) -> Optional[datetime]:
     """FR-11 `taken_at`: an ISO time. With an offset it is converted to Korea time; without one it is taken as
-    Korea time already. Returned without a zone, as photos.image_time stores it (Q-09). Bad text: None."""
+    Korea time already. Returned in Korea time with its zone (photos.image_time is timestamptz since
+    0006_cleanup.sql, M7). Bad text: None."""
     if not value:
         return None
     text = value.strip().replace("Z", "+00:00") if value.strip().endswith("Z") else value.strip()
@@ -99,6 +100,5 @@ def taken_at_kst(value: Optional[str]) -> Optional[datetime]:
         t = datetime.fromisoformat(text)
     except ValueError:
         return None
-    if t.tzinfo is not None:
-        t = t.astimezone(KST)
-    return t.replace(tzinfo=None, microsecond=0)
+    t = t.astimezone(KST) if t.tzinfo is not None else t.replace(tzinfo=KST)
+    return t.replace(microsecond=0)

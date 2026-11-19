@@ -67,6 +67,14 @@ def test_photo_taken_before_the_course_does_not_count():
     assert kinds(judge(*at(ORIGIN), "exif", slightly, [course(stops=[])], NOW)) == [("random_point", None)]
 
 
+def test_capture_time_with_its_zone():
+    # photos.taken_at_kst returns Korea time with its zone (M7); the same instants judge the same way
+    kst = timezone(timedelta(hours=9))
+    assert judge(*at(ORIGIN), "exif", (MADE - timedelta(hours=2)).astimezone(kst), [course()], NOW) == []
+    after = (MADE + timedelta(hours=1)).astimezone(kst)
+    assert kinds(judge(*at(ORIGIN), "exif", after, [course(stops=[])], NOW)) == [("random_point", None)]
+
+
 def test_no_capture_time_uses_the_upload_time():
     assert kinds(judge(*at(ORIGIN), "device", None, [course(stops=[])], NOW)) == [("random_point", None)]
 

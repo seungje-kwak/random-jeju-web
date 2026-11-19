@@ -119,7 +119,7 @@
 **완료 기준:**
 - [x] `pg_dump --schema-only`로 A의 `public` 스키마를 받아 `supabase/migrations/0000_randomjeju_baseline.sql`로 저장한다 (데이터 없이). 2026-11-19 조회로 확인한 구조(8.5)와 같아야 한다
 - [x] `0001_mypace.sql`은 해커톤 `schema.sql`과 같은 내용이다
-- [x] `0002_merge.sql`이 FR-30의 변경을 담고, 두 번 실행해도 오류가 없다 (`if not exists`). 2026-11-19 적용. **FR-32(시간 열 변환)는 M7로 미룬다**: Ktor가 아직 이 열들에 타임존 없는 값을 쓰고 있어서, 지금 바꾸면 Android 업로드의 촬영 시각이 9시간 어긋난다. FR-34의 정책 정리도 M7이다
+- [x] `0002_merge.sql`이 FR-30의 변경을 담고, 두 번 실행해도 오류가 없다 (`if not exists`). 2026-11-19 적용. **FR-32(시간 열 변환)는 M7로 미룬다**: Ktor가 아직 이 열들에 타임존 없는 값을 쓰고 있어서, 지금 바꾸면 Android 업로드의 촬영 시각이 9시간 어긋난다. FR-34의 정책 정리도 M7이다. (둘 다 2026-11-19 M7에서 `0006_cleanup.sql`로 적용)
 - [x] `post_likes`는 이미 `(post_id, user_id)`가 기본 키라 고유 제약을 더하지 않는다. 같은 정의의 중복 제약 `post_likes_unique_post_user`는 지운다. `admin_areas.geom`의 중복 인덱스 `idx_admin_geom`도 지운다
 - [x] 모든 테이블에 RLS가 켜져 있다 (FR-34). 새 `visits` 테이블 포함. 적용 뒤 Ktor 응답(사진 28, 클러스터 12)이 그대로다
 
@@ -419,10 +419,10 @@
 **완료 기준:**
 - [x] (M0에 먼저) Supabase A의 DB 비밀번호를 바꾼다. 옛 비밀번호는 `random-jeju-api`의 `src/main/resources/application.conf`에 커밋돼 있었다. Ktor 서버의 `.env`도 새 값으로 바꾸거나, 서버를 먼저 끈다 (2026-11-19 완료. 옛 비밀번호로는 접속이 거부되고, 새 `.env`로는 접속된다)
 - [x] (M0에 먼저) 8.6의 RLS 긴급 조치를 적용하고, anon 키로 `users`, `photos`, `locations`를 읽거나 지울 수 없음을 확인한다 (2026-11-19 완료)
-- [ ] (M7) `users`의 임시 정책 2개와 `posts`·`comments`·`post_likes`의 정책 10개를 지운다 (FR-34)
-- [ ] Render/Cloud Run의 Ktor 서비스를 멈춘다. Android 앱의 API 호출은 이때부터 실패한다 (4장 비목표)
-- [ ] Supabase B의 데이터가 A와 같음을 확인한 뒤 B를 일시 정지한다. 바로 지우지 않는다
-- [ ] 해커톤 저장소의 README에 새 저장소 주소를 적는다
+- [x] (M7) `users`의 임시 정책 2개와 `posts`·`comments`·`post_likes`의 정책 10개를 지운다 (FR-34). 2026-11-19 `0006_cleanup.sql`로 적용. `public`에 정책 0개, 6개 테이블 RLS 켜짐 그대로
+- [x] Render/Cloud Run의 Ktor 서비스를 멈춘다. Android 앱의 API 호출은 이때부터 실패한다 (4장 비목표). 2026-11-19 Cloud Run 서비스 `random-jeju`(asia-northeast3)에서 `allUsers`의 `roles/run.invoker`를 뺐다. 이제 모든 요청이 403이다. 서비스와 이미지는 지우지 않았다. 되돌리기: `gcloud run services add-iam-policy-binding random-jeju --region asia-northeast3 --member=allUsers --role=roles/run.invoker`. Render: Android 앱(`NetworkModule.kt`)과 Ktor 저장소에 Render 주소가 없어 확인할 대상이 없다 (앱은 Cloud Run만 부른다)
+- [ ] ~~Supabase B의 데이터가 A와 같음을 확인한 뒤 B를 일시 정지한다~~ **하지 않는다 (2026-11-19 사용자 결정).** B는 해커톤 웹앱이 계속 쓰므로 그대로 둔다
+- [ ] ~~해커톤 저장소의 README에 새 저장소 주소를 적는다~~ **하지 않는다 (2026-11-19 사용자 결정).** 해커톤 저장소는 팀 저장소라 손대지 않는다
 
 ---
 
@@ -583,6 +583,7 @@
   alter table photos    alter column image_time type timestamptz using image_time at time zone 'Asia/Seoul';
   ```
   `posts`, `comments`, `post_likes`의 시간 열은 이미 `timestamptz`다. 새 업로드의 `taken_at`은 오프셋이 붙은 ISO 문자열로 받고, 오프셋이 없으면 한국 시간으로 본다.
+  **2026-11-19 적용 (`0006_cleanup.sql`, M7).** 네 열 모두 `timestamptz`가 됐다. 사진 109번은 촬영 10:02:55 UTC, 업로드 10:03:38 UTC로 1분 차이가 됐다. `create_photo_post`는 `p_image_time timestamptz`를 받고, 백엔드는 `+09:00`이 붙은 한국 시간을 보낸다 (롤백한 트랜잭션에서 14:03 KST가 05:03 UTC로 저장됨을 확인).
 - **FR-33** `users`는 지금 `id, nickname, profile_image, age_group, home_region, preferences, join_date`다. 열은 그대로 두고, 익명 사용자의 행은 닉네임을 정할 때 `id`, `nickname`만 넣어 만든다. 기존 이메일 사용자 2명의 행과 게시글은 그대로 둔다 (Q-03).
 - **FR-34** 모든 `public` 테이블은 RLS가 켜져 있고 정책이 없다. 브라우저는 Supabase를 Auth에만 쓰고, 데이터는 모두 FastAPI(서비스 키)를 거친다 (해커톤 1.3의 "프론트는 FastAPI만 호출한다"를 지킨다). 그래서 지금 `posts`, `comments`, `post_likes`에 있는 정책 10개(`auth.uid() = user_id`로 쓰기 허용)는 지운다. 남겨 두면 익명 세션을 가진 브라우저가 FastAPI의 검사(글자 수, 하루 업로드 제한)를 건너뛰고 직접 쓸 수 있다.
 
@@ -690,7 +691,7 @@ random-jeju-web/            (새 저장소, Q-02. 이름은 바꿔도 된다)
   create policy "own row read"   on users for select using (auth.uid() = id);
   create policy "own row insert" on users for insert with check (auth.uid() = id);
   ```
-  Ktor 서버는 `postgres` 계정(테이블 소유자, `rolbypassrls`)으로 접속하므로 RLS의 영향을 받지 않는다. M7에서 `users`의 임시 정책 두 개와 `posts`·`comments`·`post_likes`의 정책 10개를 지운다 (FR-34).
+  Ktor 서버는 `postgres` 계정(테이블 소유자, `rolbypassrls`)으로 접속하므로 RLS의 영향을 받지 않는다. M7에서 `users`의 임시 정책 두 개와 `posts`·`comments`·`post_likes`의 정책 10개를 지운다 (FR-34). **2026-11-19 지웠다 (`0006_cleanup.sql`).**
   - 적용 결과 (2026-11-19): 정책은 `authenticated` 역할에만 걸었다. `anon` 역할로는 10개 테이블이 모두 0행으로 보이고(`posts`는 기존 공개 읽기 정책대로 27행), 로그인한 사용자는 자기 `users` 행 1개만 보인다. `postgres`로는 행 수가 그대로다. Ktor의 `/api/photos/map`(28개), `/api/photos/clusters`(12개) 응답이 적용 전과 같다.
   - 되돌리기: 두 정책을 `drop policy`하고 10개 테이블에 `disable row level security`.
   - 남은 영향: Android 가입 때 이메일 확인이 켜져 있어 세션 없이 `users`에 넣는 경우, 그 넣기는 이제 실패한다. 사용자 2명뿐이고 Android는 끝낼 예정이라 그대로 둔다.
@@ -711,7 +712,7 @@ random-jeju-web/            (새 저장소, Q-02. 이름은 바꿔도 된다)
 | 동네까지 거리 (`snap_km`) | 중앙값 4km 이하, p90 7km 이하. (처음 목표 2km·5km는 프로필 없이 계산한 밀집 장소 거리에서 나왔다. 관심사·식사 필터를 거친 동네는 그보다 드물다.) 2026-11-19: 중앙값 3.7km, p90 6.7km로 통과 | US-015 평가 |
 | 사진 업로드 | 성공률 98% 이상, 썸네일 방향 오류 0건 | 서버 로그, Orientation 테스트 |
 | 핵심 흐름 | 굴리기 → 코스 → 업로드 → 인증이 배포 환경에서 끊기지 않음 | 수동 시나리오 1회 + E2E 테스트 |
-| 전환 | Ktor 서버 요청 0, Supabase B 정지 | Render/Cloud Run 콘솔 |
+| 전환 | Ktor 서버 요청 0 (2026-11-19부터 공개 호출 403). Supabase B는 정지하지 않기로 했다 (US-050) | Cloud Run 콘솔 |
 
 ---
 
