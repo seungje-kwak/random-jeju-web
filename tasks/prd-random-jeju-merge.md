@@ -127,22 +127,23 @@
 **설명:** 사용자로서, 가입하지 않고도 사진을 올리고 좋아요와 댓글을 남기고 싶다.
 
 **완료 기준:**
-- [ ] Supabase A에서 Anonymous Sign-Ins를 켠다
-- [ ] 신원이 필요한 첫 동작(굴리기, 올리기, 좋아요, 댓글) 직전에 프론트가 `supabase.auth.signInAnonymously()`로 세션을 만든다. 화면에는 아무것도 뜨지 않는다. 세션이 이미 있으면 다시 만들지 않는다
-- [ ] 첫 게시글이나 첫 댓글을 쓸 때 닉네임 입력 창(2–12자)이 뜬다. 저장하면 `POST /me`로 `users` 행이 생긴다. 다음부터는 뜨지 않는다
-- [ ] 닉네임을 정하기 전의 표시 이름은 `여행자` + 사용자 ID 앞 4자리다
-- [ ] 로그인하지 않아도 피드, 사진 지도, 코스는 볼 수 있다 (Android의 "로그아웃이면 게시판이 비어 있음"을 고친다)
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] Supabase A에서 Anonymous Sign-Ins를 켠다 (2026-11-19)
+- [x] 신원이 필요한 첫 동작(굴리기, 올리기, 좋아요, 댓글) 직전에 프론트가 `supabase.auth.signInAnonymously()`로 세션을 만든다. 화면에는 아무것도 뜨지 않는다. 세션이 이미 있으면 다시 만들지 않는다 (`frontend/lib/auth.ts`의 `accessToken()`. 동시에 불려도 세션은 하나. 실제 호출 지점은 M3·M4)
+- [ ] 첫 게시글이나 첫 댓글을 쓸 때 닉네임 입력 창(2–12자)이 뜬다. 저장하면 `POST /me`로 `users` 행이 생긴다. 다음부터는 뜨지 않는다 (`NicknameDialog`, `useNicknameGate`는 만들었다. 게시글·댓글 화면에 붙이는 것과 화면 확인은 M4)
+- [x] 닉네임을 정하기 전의 표시 이름은 `여행자` + 사용자 ID 앞 4자리다 (`displayName`, 4개 언어)
+- [ ] 로그인하지 않아도 피드, 사진 지도, 코스는 볼 수 있다 (Android의 "로그아웃이면 게시판이 비어 있음"을 고친다). 코스는 지금도 토큰 없이 열린다. 피드·사진 지도는 M4
+- [x] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill (M4에서 닉네임 창과 함께)
+- 확인 (2026-11-19): `frontend/scripts/check-guest-auth.mjs`가 실제 프로젝트에서 supabase-js로 익명 로그인 → `/me` → 닉네임 저장까지 9개 항목을 통과했다
 
 #### US-004: FastAPI에서 Supabase 토큰 검증 (P0, M2)
 **설명:** 개발자로서, 요청한 사용자를 서버가 토큰으로 확인해서 다른 사람으로 위장한 쓰기를 막고 싶다.
 
 **완료 기준:**
-- [ ] `backend/app/auth.py`에 의존성 `current_user`(토큰이 없거나 틀리면 401 `UNAUTHORIZED`)와 `optional_user`(없으면 `None`, 틀리면 401)를 만든다
-- [ ] `Authorization: Bearer <access_token>`을 Supabase JWKS(`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`)로 검증한다. 프로젝트가 아직 HS256 공유 비밀을 쓰면 `SUPABASE_JWT_SECRET`으로 검증한다. `aud = authenticated`, 만료 시각을 확인하고 `sub`를 사용자 ID로 쓴다
-- [ ] 어느 엔드포인트도 사용자 ID를 쿼리나 본문으로 받지 않는다
-- [ ] 테스트: 올바른 토큰, 만료된 토큰, 서명이 틀린 토큰, 토큰 없음 4가지
+- [x] `backend/app/auth.py`에 의존성 `current_user`(토큰이 없거나 틀리면 401 `UNAUTHORIZED`)와 `optional_user`(없으면 `None`, 틀리면 401)를 만든다
+- [x] `Authorization: Bearer <access_token>`을 Supabase JWKS(`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`)로 검증한다. 프로젝트가 아직 HS256 공유 비밀을 쓰면 `SUPABASE_JWT_SECRET`으로 검증한다. `aud = authenticated`, 만료 시각을 확인하고 `sub`를 사용자 ID로 쓴다. 발급자(`iss`)와 `role = authenticated`도 확인해 anon·service 키를 거부한다. 2026-11-19 현재 이 프로젝트는 HS256(JWKS 비어 있음)이다. HS256 토큰이 왔는데 비밀이 없으면 503 `AUTH_NOT_CONFIGURED`
+- [x] 어느 엔드포인트도 사용자 ID를 쿼리나 본문으로 받지 않는다
+- [x] 테스트: 올바른 토큰, 만료된 토큰, 서명이 틀린 토큰, 토큰 없음 4가지 (`tests/test_auth.py`, 그 밖에 anon 키, 다른 서명 키, 서명 없는 토큰, 쿼리의 사용자 ID 등 29개)
 
 #### US-005: 배포 설정 (P0, M1–M2)
 **설명:** 개발자로서, 새 스택이 Vercel·Railway·Supabase A로 자동 배포되게 하고 싶다.

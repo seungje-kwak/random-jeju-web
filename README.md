@@ -17,7 +17,7 @@ data/                  장소 시드 CSV, 데모 코스
 |---|---|---|
 | M0 | 저장소 만들기, RLS 긴급 조치, DB 비밀번호 교체, Vercel·Railway 연결 | 저장소·RLS·비밀번호 완료 (2026-11-19). Vercel·Railway 연결 남음 |
 | M1 | 해커톤 스키마·장소 데이터를 RandomJeju Supabase로 | 완료 (2026-11-19). 배포 환경 변수(US-005)는 Vercel·Railway 연결 뒤 |
-| M2 | 익명 세션, 토큰 검증 | |
+| M2 | 익명 세션, 토큰 검증 | 완료 (2026-11-19). 닉네임 창의 화면 연결은 M4 |
 | M3 | 랜덤 지점 + 주변 코스 | |
 | M4 | 사진 업로드, 사진 지도, 피드 | |
 | M5 | 방문 인증 | |
@@ -34,20 +34,25 @@ data/                  장소 시드 CSV, 데모 코스
 
 ## 로컬 실행
 
-지금 코드는 해커톤 커밋 `30e236c`와 같다. 실행 방법은 해커톤과 같다.
-
 ```bash
 # backend (http://localhost:8000)
 cd backend
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt -r requirements-dev.txt
-# backend/.env.example을 backend/.env로 복사하고 SUPABASE_URL, SUPABASE_SERVICE_KEY를 채운다
+# backend/.env.example을 backend/.env로 복사하고 SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_JWT_SECRET을 채운다
 .venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 
 # frontend (http://localhost:3000)
 cd frontend
 npm install
+# frontend/.env.example을 frontend/.env.local로 복사하고 NEXT_PUBLIC_* 값을 채운다
 npm run dev
 ```
 
 `.env`, `.env.local`은 커밋하지 않는다.
+
+게스트 로그인 확인 (백엔드가 켜져 있을 때, 익명 사용자 하나를 만든다):
+
+```bash
+cd frontend && node --env-file=.env.local scripts/check-guest-auth.mjs
+```
