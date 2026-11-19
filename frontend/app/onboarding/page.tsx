@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import type { Area, Category, UserProfileInput } from "@/lib/types";
 import { MESSAGES, useLocale } from "@/lib/i18n";
 import { ceilTo, nowInJejuMinutes, windowError } from "@/lib/time";
+import { loadProfile, saveProfile } from "@/lib/random-store";
 import { loadOnboardingDraft, saveOnboardingDraft } from "@/lib/trip-store";
 import { TRIP_TIME, defaultEnd, endForStart, endOptions, startOptions, toHHMM, toMin } from "@/lib/tripTime";
 import { useV6Copy } from "@/lib/v6-copy";
@@ -42,7 +43,19 @@ const AREA_GROUPS: Area["group"][] = ["jeju", "seogwipo"];
 const AREA_STEP = 4,
   TIME_STEP = 5,
   STEP_COUNT = 6;
-type Status = "idle" | "loading" | "error" | "nocandidates" | "badarea" | "badtime";
+type Status = "idle" | "loading" | "error" | "nocandidates" | "badarea" | "badtime" | "badpoint";
+
+/** tasks/prd-random-jeju-merge.md US-016: /onboarding?mode=random&location_id=N skips the area step and plans
+ *  around that drawn point. Read from the URL on the client (useSearchParams would need a Suspense boundary). */
+function randomLocationFromUrl(): number | null {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const id = Number(q.get("location_id"));
+    return q.get("mode") === "random" && Number.isInteger(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 /** TT O19: Jeju's clock rounded up to the half hour. Before 08:00 -> 08:00, after 16:00 -> 10:00. */
 function defaultStartMin(): number {
@@ -81,16 +94,26 @@ export default function Onboarding() {
   const [restored, setRestored] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [areaList, setAreaList] = useState<AreaList>({ kind: "loading" });
+  const [randomLoc, setRandomLoc] = useState<number | null>(null);
+  const randomMode = randomLoc !== null;
+  const R = M.random;
 
   // Answers survive a reload and the browser's back button (this tab only). With no draft, the day
   // starts at Jeju's current time rounded up (read on the client only, so it never mismatches the server render).
   useEffect(() => {
+    const loc = randomLocationFromUrl();
+    setRandomLoc(loc);
     const saved = loadOnboardingDraft<Saved>();
+    const profile = loc !== null ? loadProfile() : null;
     if (saved?.draft && Array.isArray(saved.draft.interests)) {
       const start = snap(saved.draft.startTime ?? "10:00");
       const end = snap(saved.draft.endTime ?? "14:00");
       setD({ ...saved.draft, startTime: start, endTime: end });
-      setStep(Math.min(STEP_COUNT - 1, Math.max(0, Number(saved.step) || 0)));
+      const s = Math.min(STEP_COUNT - 1, Math.max(0, Number(saved.step) || 0));
+      setStep(loc !== null && s === AREA_STEP ? TIME_STEP : s);
+    } else if (profile) {
+      // "Change my preferences" from the dice screen: start from the last answers (US-016)
+      setD({ ...profile.user_profile, startTime: snap(profile.start_time), endTime: snap(profile.end_time) });
     } else {
       const start = defaultStartMin();
       setD((prev) => ({ ...prev, startTime: toHHMM(start), endTime: toHHMM(defaultEnd(start)) }));
@@ -135,9 +158,14 @@ export default function Onboarding() {
     d.fitness_level != null && d.max_walk_min != null,
     d.condition_today != null,
     d.diet != null,
-    area?.selectable === true,
+    randomMode || area?.selectable === true,   // random mode: the dice picks the place
     timeError === null,
   ];
+  // Random mode has five steps: the area step is skipped both ways.
+  const stepCount = randomMode ? STEP_COUNT - 1 : STEP_COUNT;
+  const shownStep = randomMode && step > AREA_STEP ? step : step + 1;
+  const nextStep = (s: number) => (randomMode && s + 1 === AREA_STEP ? AREA_STEP + 1 : s + 1);
+  const prevStep = (s: number) => (randomMode && s - 1 === AREA_STEP ? AREA_STEP - 1 : s - 1);
   const canStartNow = nowStart != null && nowStart >= TRIP_TIME.minStart && nowStart <= TRIP_TIME.maxStart;
 
   function goTo(next: number) {
@@ -163,7 +191,7 @@ export default function Onboarding() {
   };
 
   async function submit() {
-    if (inflight.current || !valid.every(Boolean) || !d.area_id) return;
+    if (inflight.current || !valid.every(Boolean) || (!randomMode && !d.area_id)) return;
     inflight.current = true;
     setStatus("loading");
     const profile: UserProfileInput = {
@@ -176,11 +204,19 @@ export default function Onboarding() {
     };
     try {
       // start_time and end_time are HH:MM, Jeju time.
-      const course = await api.createCourse(profile, d.area_id, d.startTime, d.endTime);
+      const course = randomLoc !== null
+        ? await api.createRandomCourse(randomLoc, profile, d.startTime, d.endTime)
+        : await api.createCourse(profile, d.area_id!, d.startTime, d.endTime);
+      // US-016: the next roll of the dice plans straight away with these answers
+      saveProfile({ user_profile: profile, start_time: d.startTime, end_time: d.endTime });
       router.push(`/course/${course.id}`);
     } catch (e) {
       inflight.current = false;
       const code = e instanceof ApiError ? e.code : null;
+      if (code === "LOCATION_NOT_FOUND") {
+        setStatus("badpoint");
+        return;
+      }
       if (code === "INVALID_AREA") {
         // The area stopped being available: back to the area step with a fresh list.
         setD((prev) => ({ ...prev, area_id: undefined }));
@@ -203,7 +239,7 @@ export default function Onboarding() {
       : null,
     d.condition_today != null ? O.moods[MOODS.indexOf(d.condition_today)].label : null,
     d.diet != null ? O.diets[DIETS.indexOf(d.diet)].label : null,
-    area ? areaName(area) : null,
+    randomMode ? `🎲 ${R.marker}` : area ? areaName(area) : null,
     timeError === null ? `${M.stop.timeRange(d.startTime, d.endTime)} (${M.common.duration(minutes)})` : null,
   ];
 
@@ -230,11 +266,11 @@ export default function Onboarding() {
         <div className="v9-step-head">
           <span>{c.personalize}</span>
           <span>
-            {String(step + 1).padStart(2, "0")} / {String(STEP_COUNT).padStart(2, "0")}
+            {String(shownStep).padStart(2, "0")} / {String(stepCount).padStart(2, "0")}
           </span>
         </div>
         <div className="v9-progress">
-          <span style={{ width: `${((step + 1) / STEP_COUNT) * 100}%` }} />
+          <span style={{ width: `${(shownStep / stepCount) * 100}%` }} />
         </div>
         <h1 className="v9-form-title" ref={titleRef} tabIndex={-1} style={{ outline: "none" }}>
           {stepTitle}
@@ -435,11 +471,18 @@ export default function Onboarding() {
             </button>
           </div>
         )}
+        {status === "badpoint" && (
+          <div role="alert" className="v9-form-error">
+            <p>{R.pointGone}</p>
+            <button type="button" onClick={() => router.push("/random")}>{R.backToDice}</button>
+          </div>
+        )}
         <div className="v9-step-actions">
-          <button type="button" className="v9-outline" onClick={() => (step === 0 ? router.push("/") : goTo(step - 1))}>
+          <button type="button" className="v9-outline"
+            onClick={() => (step === 0 ? router.push(randomMode ? "/random" : "/") : goTo(prevStep(step)))}>
             {c.back}
           </button>
-          <button type="button" className="v9-primary" disabled={!valid[step]} onClick={() => (step === TIME_STEP ? submit() : goTo(step + 1))}>
+          <button type="button" className="v9-primary" disabled={!valid[step]} onClick={() => (step === TIME_STEP ? submit() : goTo(nextStep(step)))}>
             {step === TIME_STEP ? c.create : c.next}
           </button>
         </div>
@@ -448,7 +491,7 @@ export default function Onboarding() {
         <details className="v9-answers">
           <summary>{O.summaryTitle}</summary>
           <dl>
-            {O.steps.map((s, i) => (
+            {O.steps.map((s, i) => (randomMode && i === AREA_STEP) ? null : (
               <div key={s.name}>
                 <dt>
                   <button type="button" className="underline-offset-2 hover:underline" disabled={i > step && !valid.slice(0, i).every(Boolean)} onClick={() => goTo(i)}>

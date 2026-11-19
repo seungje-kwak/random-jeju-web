@@ -8,7 +8,7 @@ export type KMap = {
   setBounds(b: KLatLngBounds, top?: number, right?: number, bottom?: number, left?: number): void;
   setCenter(p: KLatLng): void;
   panTo(p: KLatLng): void;
-  setLevel(level: number): void;
+  setLevel(level: number, options?: { animate?: boolean | { duration: number }; anchor?: KLatLng }): void;
   getLevel(): number;
   relayout(): void;
 };

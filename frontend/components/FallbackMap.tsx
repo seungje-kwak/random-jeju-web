@@ -5,7 +5,7 @@ import { useLocale } from "@/lib/i18n";
 import { MAP_CONFIG, toPercent } from "@/config/map";
 import { JEJU_LANDMARKS, ISLAND_MAP_BOUNDS } from "@/lib/landmarks";
 import type { Category, CourseItem, Place } from "@/lib/types";
-import type { MapSelect } from "./JejuMap";
+import type { MapRandomPoint, MapSelect } from "./JejuMap";
 
 const MARKER_PX = 28;
 
@@ -49,14 +49,17 @@ export function FallbackMap({
   places,
   tripMode,
   activeCategories,
+  randomPoint,
   onSelect,
 }: {
   items: CourseItem[];
   places: Place[];
   tripMode: boolean;
   activeCategories: Set<Category>;
+  randomPoint?: MapRandomPoint;
   onSelect: MapSelect;
 }) {
+  const dice = randomPoint ? toPercent(randomPoint.lat, randomPoint.lng, ISLAND_MAP_BOUNDS) : null;
   const boxRef = useRef<HTMLDivElement>(null);
   const [widthPx, setWidthPx] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -115,6 +118,8 @@ export function FallbackMap({
           })}
           {others.map(({p,x,y})=><button type="button" key={p.id} onClick={()=>onSelect({place:p,stay:p.avg_stay_min})}
             className="map-category-marker" style={{left:`${x}%`,top:`${y}%`}} title={p.name_ko} aria-label={p.name_ko}>{icons[p.category]}</button>)}
+          {dice?.inBounds && <span className="rj-dice-marker absolute z-[5] -translate-x-1/2 -translate-y-full pointer-events-none"
+            style={{left:`${dice.x}%`,top:`${dice.y}%`,fontSize:26}} role="img" aria-label={randomPoint!.label}>🎲</span>}
           {markers.map(({it,...pt})=>{const done=tripMode&&it.status==="done";const current=tripMode&&it.status==="current";return <button type="button" key={`${it.order}-${it.place_id}`}
             onClick={()=>onSelect({place:it.place,stay:it.stay_min,order:it.order})}
             className={`map-stop-marker ${current?"is-current":""} ${done?"is-done":""}`}

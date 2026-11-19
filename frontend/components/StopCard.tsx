@@ -197,16 +197,20 @@ export function StopCard({
         <PlaceGuide place={p} />
         <Hours item={item} />
         <FoodBadges food={p.food_options} diet={diet} locale={locale} />
-        <PhraseCards item={item} tier={tier} />
-        <button type="button" onClick={() => setDriverOpen(true)} className="stop-card__driver">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m5 11 2-5h10l2 5M5 11h14v7H5zM7 18v2m10-2v2M5 14h2m10 0h2" />
-          </svg>
-          <span>{tx.driver}</span>
-          <span className="stop-card__driver-arrow" aria-hidden="true">
-            ↗
-          </span>
-        </button>
+        {/* tasks/prd-random-jeju-merge.md US-040: phrase cards and the driver card are for travelers who
+            don't read Korean, so a Korean screen leaves them out */}
+        {locale !== "ko" && <PhraseCards item={item} tier={tier} />}
+        {locale !== "ko" && (
+          <button type="button" onClick={() => setDriverOpen(true)} className="stop-card__driver">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m5 11 2-5h10l2 5M5 11h14v7H5zM7 18v2m10-2v2M5 14h2m10 0h2" />
+            </svg>
+            <span>{tx.driver}</span>
+            <span className="stop-card__driver-arrow" aria-hidden="true">
+              ↗
+            </span>
+          </button>
+        )}
         <div className="stop-card__map-actions">
           <button type="button" className="stop-card__map-link" onClick={showOnMap}>
             <span aria-hidden="true">⌖</span> {S.showOnMap}

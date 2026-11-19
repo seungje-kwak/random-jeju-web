@@ -3,7 +3,7 @@
 export type Locale = "en" | "zh" | "ja" | "ko";
 
 export const LOCALES: readonly Locale[] = ["en", "zh", "ja", "ko"];
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "ko";   // tasks/prd-random-jeju-merge.md US-040
 
 /** One name for both the cookie (read by the server, so a reload renders in the right
  *  language straight away) and the localStorage entry (kept from the first language patch). */

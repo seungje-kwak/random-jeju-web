@@ -95,14 +95,30 @@ export const messages = {
   },
 } as const;
 
+// tasks/prd-random-jeju-merge.md US-040: Korean unless the traveler picked a language or the browser prefers
+// one of the others.
+export const DEFAULT_LOCALE: Locale = "ko";
+
+function startingLocale(): Locale {
+  let saved: string | null = null;
+  try { saved = window.localStorage.getItem(LOCALE_STORAGE_KEY); } catch { /* storage blocked */ }
+  if (saved === "en" || saved === "zh" || saved === "ja" || saved === "ko") return saved;
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const t = (tag || "").toLowerCase();
+    if (t.startsWith("ko")) return "ko";
+    if (t.startsWith("ja")) return "ja";
+    if (t.startsWith("zh")) return "zh";
+    if (t.startsWith("en")) return "en";
+  }
+  return DEFAULT_LOCALE;
+}
+
 export function useLocale() {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   useEffect(() => {
-    const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (saved === "en" || saved === "zh" || saved === "ja" || saved === "ko") {
-      setLocale(saved);
-      document.documentElement.lang = saved === "zh" ? "zh-CN" : saved;
-    }
+    const first = startingLocale();
+    setLocale(first);
+    document.documentElement.lang = first === "zh" ? "zh-CN" : first;
     const sync = () => {
       const other = window.localStorage.getItem(LOCALE_STORAGE_KEY);
       if (other === "en" || other === "zh" || other === "ja" || other === "ko") setLocale(other);

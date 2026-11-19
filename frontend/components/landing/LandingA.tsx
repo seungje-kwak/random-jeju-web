@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LanguageSelect } from "@/components/LanguageSelect";
-import { useLocale } from "@/lib/i18n";
+import { MESSAGES, useLocale } from "@/lib/i18n";
 import { useV6Copy } from "@/lib/v6-copy";
 import { LANDING_IMAGES, plainCta, splitSteps, useReveal, useScrolled } from "./shared";
 
@@ -17,13 +17,14 @@ export function LandingA() {
   const ref = useReveal<HTMLElement>();
   const steps = splitSteps(c.guideHow);
   const cta = plainCta(c.begin);
+  const R = MESSAGES[locale].random;
   const gallery = [LANDING_IMAGES.culture, LANDING_IMAGES.food, LANDING_IMAGES.market, LANDING_IMAGES.hero];
 
   return (
     <main ref={ref} className="lp lpa">
       <header className={`lpa-bar ${scrolled ? "is-scrolled" : ""}`}>
         <span className="lpa-bar-tag">Not just a trip — a day at your pace</span>
-        <Link href="/" className="lpa-bar-brand" aria-label="MyPace Jeju home">MyPace Jeju</Link>
+        <Link href="/" className="lpa-bar-brand" aria-label="Random Jeju home">Random Jeju</Link>
         <div className="lpa-bar-right">
           <a href="#lpa-guide">Guide</a>
           <a href="#lpa-journey">Journey</a>
@@ -31,23 +32,24 @@ export function LandingA() {
         </div>
       </header>
 
-      <Link href="/onboarding" className="lpa-float">
-        <strong>{cta}</strong>
-        <small>{c.guideIntro}</small>
+      {/* tasks/prd-random-jeju-merge.md 3.2: the dice is the main way in; picking an area stays below */}
+      <Link href="/random" className="lpa-float">
+        <strong>🎲 {R.landingCta}</strong>
+        <small>{R.landingSub}</small>
       </Link>
 
       <section className="lpa-cover" aria-labelledby="lpa-title">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={LANDING_IMAGES.hero} alt="" aria-hidden="true" />
         <div className="lpa-cover-center">
-          <p className="lpa-wordmark" aria-hidden="true">MyPace Jeju</p>
+          <p className="lpa-wordmark" aria-hidden="true">Random Jeju</p>
           <p className="lpa-cover-tag">Your private AI travel guide</p>
           <h1 id="lpa-title">{c.hero1} {c.hero2}</h1>
         </div>
         <nav className="lpa-index" aria-label="Sections">
           <a href="#lpa-guide"><span>{c.guide[0]}</span><em>The Guide</em></a>
           <a href="#lpa-journey"><span>{c.guide[1]}</span><em>The Journey</em></a>
-          <Link href="/onboarding"><span>{cta}</span><em>Begin</em></Link>
+          <Link href="/random"><span>🎲 {R.landingCta}</span><em>Roll</em></Link>
         </nav>
       </section>
 
@@ -105,7 +107,7 @@ export function LandingA() {
       </section>
 
       <footer className="lpa-footer">
-        <span className="lpa-footer-brand">MyPace Jeju</span>
+        <span className="lpa-footer-brand">Random Jeju</span>
         <p>{c.homeFoot}</p>
         <span>MY PACE, MY JEJU · YOUR LOCAL COMPANION</span>
       </footer>

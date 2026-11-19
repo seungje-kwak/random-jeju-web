@@ -12,6 +12,8 @@ import { PhotoCredit, PlacePhoto } from "./PlacePhoto";
 
 type Selected = { place: Place; stay: number; order?: number };
 export type MapSelect = (s: Selected) => void;
+/** tasks/prd-random-jeju-merge.md US-014: where a random course's dice landed. Pass a stable object. */
+export type MapRandomPoint = { lat: number; lng: number; label: string };
 
 // 7장: Kakao map when NEXT_PUBLIC_KAKAO_MAP_KEY is set and the SDK loads; otherwise the fallback SVG (7.1).
 // Both draw the same markers and line; the bottom card (7.7) lives here so it is shared.
@@ -20,6 +22,7 @@ export function JejuMap({
   places = [],
   tripMode = false,
   center,
+  randomPoint,
   onSelectOrder,
   onViewStop,
 }: {
@@ -28,6 +31,7 @@ export function JejuMap({
   tripMode?: boolean;
   /** The chosen area's centre, for a course with no stops. Pass a stable object. */
   center?: { lat: number; lng: number };
+  randomPoint?: MapRandomPoint;
   /** Map -> timeline: which course stop is picked on the map (null when the card closes). */
   onSelectOrder?: (order: number | null) => void;
   /** "See this stop" in the bottom card scrolls the timeline to that stop. */
@@ -73,6 +77,7 @@ export function JejuMap({
           activeCategories={activeCategories}
           focusPlace={selected?.place ?? null}
           center={center}
+          randomPoint={randomPoint}
           onSelect={setSelected}
           onError={(e) => {
             console.warn("Kakao Maps SDK could not load:", e);
@@ -81,7 +86,7 @@ export function JejuMap({
         />
       ) : (
         <div className="v9-fallback-map">
-          <FallbackMap items={items} places={places} tripMode={tripMode} activeCategories={activeCategories} onSelect={setSelected}/>
+          <FallbackMap items={items} places={places} tripMode={tripMode} activeCategories={activeCategories} randomPoint={randomPoint} onSelect={setSelected}/>
           <p className="v9-fallback-notice" role="status">
             {locale === "ko" ? "현재는 일러스트 개념도입니다. 실제 도로 경로나 위치를 정확히 나타내지 않으며, 카카오맵 연결 후 실제 지도로 전환됩니다." : locale === "en" ? "Illustrated overview only, not a real road map or precise route. Connect Kakao Maps for a live map." : locale === "zh" ? "目前为示意地图，并非真实道路或精确路线。连接 Kakao 地图后显示真实地图。" : "現在はイメージ図です。実際の道路・正確な経路ではありません。Kakaoマップ接続後に切り替わります。"}
           </p>

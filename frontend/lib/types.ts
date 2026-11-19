@@ -124,6 +124,40 @@ export type Course = {
   locked_count: number;
   items: CourseItem[];
   meal_gaps: MealGap[]; // in start_time order; a free plan only gets the ones among its visible stops
+  // tasks/prd-random-jeju-merge.md FR-10
+  kind: "pick" | "random";
+  random_origin: RandomOrigin | null;
+  visits: Visit[];
+};
+
+export type RandomOrigin = {
+  location_id: number;
+  lat: number;
+  lng: number;
+  adm_nm: string | null;       // eup / myeon / dong, e.g. "애월읍"
+  area_id: string | null;      // the area the course is in (the hub's area, FR-4)
+  snap_km: number | null;      // random point -> hub centre, straight line
+  hub_place_id: number | null;
+  hub_name_ko: string | null;
+  hub_name_en: string | null;
+};
+
+export type Visit = {               // M5 check-ins; always empty before then
+  kind: "random_point" | "course_place";
+  place_id: number | null;
+  post_id: string;
+  thumb_url: string | null;
+};
+
+// POST /random-points (FR-3)
+export type RandomPoint = {
+  location_id: number;
+  lat: number;
+  lng: number;
+  adm_nm: string | null;
+  area_id: string | null;
+  nearest_hub: { place_id: number; name_ko: string; name_en: string; km: number } | null;
+  preview_places: { id: number; name_ko: string; name_en: string; category: Category; image_url: string | null; km: number }[];
 };
 
 // tasks/prd-random-jeju-merge.md FR-35

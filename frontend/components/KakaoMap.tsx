@@ -6,7 +6,7 @@ import { JEJU_LANDMARKS, ISLAND_MAP_BOUNDS } from "@/lib/landmarks";
 import { useLocale } from "@/lib/i18n";
 import { type KakaoMaps, type KLayer, type KMap, loadKakaoMaps } from "@/lib/kakao";
 import type { Category, CourseItem, Place } from "@/lib/types";
-import type { MapSelect } from "./JejuMap";
+import type { MapRandomPoint, MapSelect } from "./JejuMap";
 
 const MARKER_PX = 28;
 
@@ -65,6 +65,7 @@ export function KakaoMap({
   activeCategories,
   focusPlace,
   center,
+  randomPoint,
   onSelect,
   onError,
 }: {
@@ -75,6 +76,8 @@ export function KakaoMap({
   focusPlace: Place | null;
   /** The chosen area's centre (GET /areas), used when the course has no stops (PRD 7.6). */
   center?: { lat: number; lng: number };
+  /** tasks/prd-random-jeju-merge.md US-014: drawn as a dice and kept in view with the stops. */
+  randomPoint?: MapRandomPoint;
   onSelect: MapSelect;
   onError: (e: unknown) => void;
 }) {
@@ -233,6 +236,17 @@ export function KakaoMap({
         }),
       );
     }
+    if (randomPoint) {
+      const dice = document.createElement("div");
+      dice.className = "rj-dice-marker";
+      dice.textContent = "🎲";
+      dice.style.fontSize = "28px";
+      dice.setAttribute("role", "img");
+      dice.setAttribute("aria-label", randomPoint.label);
+      dice.title = randomPoint.label;
+      layers.push(new maps.CustomOverlay({ map, position: new maps.LatLng(randomPoint.lat, randomPoint.lng), content: dice,
+        xAnchor: 0.5, yAnchor: 1, zIndex: 6 }));
+    }
     layersRef.current = layers;
 
     islandFitRef.current = () => {
@@ -248,7 +262,14 @@ export function KakaoMap({
       setCurrentLevel(map.getLevel?.() ?? 4);
     };
     fitRef.current = () => {
-      if (stops.length === 0) {
+      if (randomPoint && stops.length > 0) {
+        // a random course: the dice and every stop in one view, so the move from the spot is visible
+        const b = new maps.LatLngBounds();
+        stops.forEach((it) => b.extend(ll(it.place)));
+        b.extend(new maps.LatLng(randomPoint.lat, randomPoint.lng));
+        const pad = MAP_CONFIG.fitPaddingPx;
+        map.setBounds(b, pad + 24, pad, pad, pad);
+      } else if (stops.length === 0) {
         const c = center ?? MAP_CONFIG.center;
         map.setLevel(MAP_CONFIG.level);
         map.setCenter(new maps.LatLng(c.lat, c.lng));
@@ -265,7 +286,7 @@ export function KakaoMap({
     };
     // Do NOT automatically reset the user's zoom when categories or language change.
     // Fitting the view happens in a separate effect below.
-  }, [ready, items, places, tripMode, activeCategories, locale, focusPlace, viewMode, center]);
+  }, [ready, items, places, tripMode, activeCategories, locale, focusPlace, viewMode, center, randomPoint]);
 
   const lastSignature = useRef(stopSignature);
   useEffect(() => {

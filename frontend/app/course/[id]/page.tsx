@@ -10,13 +10,15 @@ import { QuickNavigator } from "@/components/QuickNavigator";
 import { WindowSummary } from "@/components/WindowSummary";
 import { CourseSkeleton, MessageScreen, NewPlanLink, PrimaryButton } from "@/components/States";
 import { MoveInfo, StopCard } from "@/components/StopCard";
+import { PAYWALL_ENABLED } from "@/config/pricing";
 import { api } from "@/lib/api";
 import { MESSAGES, useLocale, travelMessages } from "@/lib/i18n";
 import { localizedPlaceName } from "@/lib/localized-place";
 import { scrollToId } from "@/lib/motion";
 import { courseSpan } from "@/lib/time";
 import { useV6Copy } from "@/lib/v6-copy";
-import { type Area, DEFAULT_AREA_ID, type Place } from "@/lib/types";
+import { saveLastPoint } from "@/lib/random-store";
+import { type Area, type Course, DEFAULT_AREA_ID, type Place } from "@/lib/types";
 import { useCourse } from "@/lib/useCourse";
 
 // Taxi fares come per leg from /api/route-estimate (Kakao Mobility); without that service no number is shown.
@@ -26,6 +28,38 @@ const FARE_HELP = {
   zh: "路线服务响应后，每段出租车行程会显示道路距离和预计车费。未连接时只显示预计时间。",
   ja: "経路サービスが応答すると、タクシー区間ごとに道路距離と予想料金を表示します。未接続の場合は予定時間のみです。",
 } as const;
+
+// tasks/prd-random-jeju-merge.md US-014: the "we moved you" sentence shows only past this distance. The 2026-11-19
+// eval (scripts/eval_random.py) has a median of 3.7 km, so 2 km (the first idea) would show on 78% of courses.
+const SNAP_NOTICE_KM = 5;
+
+function RandomBanner({ course, onReroll, state }: {
+  course: Course; onReroll: () => void; state: "idle" | "loading" | "error";
+}) {
+  const { locale } = useLocale();
+  const R = MESSAGES[locale].random;
+  const o = course.random_origin;
+  if (!o) return null;
+  const hub = locale === "ko" ? o.hub_name_ko : o.hub_name_en || o.hub_name_ko;
+  const km = o.snap_km != null ? R.km(o.snap_km) : null;
+  return (
+    <section className="mt-4 rounded-2xl border border-[#cfe5dd] bg-[#eff7f3] p-4" aria-label={R.marker}>
+      <p className="flex items-center gap-2 font-extrabold text-[#143136]">
+        <span aria-hidden="true">🎲</span>
+        {R.bannerTitle(o.adm_nm ?? R.somewhereUnknown)}
+      </p>
+      {hub && km && <p className="mt-1 text-sm text-[#1f5a52]">{R.hubLine(hub, km)}</p>}
+      {hub && km && o.snap_km != null && o.snap_km > SNAP_NOTICE_KM && (
+        <p className="mt-2 text-sm text-[var(--muted)]">{R.snapNotice(km, hub)}</p>
+      )}
+      <button type="button" className="v9-outline mt-3" onClick={onReroll} disabled={state === "loading"} aria-busy={state === "loading"}>
+        <span className={state === "loading" ? "rj-dice-rolling" : ""} aria-hidden="true">🎲</span>
+        {state === "loading" ? R.rerolling : R.rerollCourse}
+      </button>
+      {state === "error" && <p role="alert" className="v9-form-error">{R.rerollFailed}</p>}
+    </section>
+  );
+}
 
 // 6.3 Result page: summary, route map, timeline (with free meal times), the lock card for previews,
 // "Shuffle my day" before the day starts, and "Start my day".
@@ -37,6 +71,7 @@ export default function CoursePage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [shuffle, setShuffle] = useState<"idle" | "loading" | "error">("idle");
+  const [reroll, setReroll] = useState<"idle" | "loading" | "error">("idle");
   const { locale } = useLocale();
   const tx = travelMessages[locale];
   const M = MESSAGES[locale];
@@ -47,6 +82,11 @@ export default function CoursePage() {
   const areaId = course ? (course.user_profile.area_id ?? DEFAULT_AREA_ID) : null;
   const area = areas.find((a) => a.id === areaId);
   const center = useMemo(() => (area ? { lat: area.center_lat, lng: area.center_lng } : undefined), [area]);
+  const origin = course?.random_origin ?? null;
+  const randomPoint = useMemo(
+    () => (origin ? { lat: origin.lat, lng: origin.lng, label: MESSAGES[locale].random.marker } : undefined),
+    [origin?.lat, origin?.lng, locale], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   useEffect(() => {
     api.areas().then((r) => setAreas(r.areas)).catch(() => setAreas([])); // area name and map centre only; failure is fine
@@ -77,8 +117,29 @@ export default function CoursePage() {
   const free = course.tier === "free";
   const span = courseSpan(items);
   const areaName = area ? (locale === "ko" ? area.name_ko : area.name_en) : C.jeju;
-  // prd-recommendation-p1 US-P16: only before the day has started.
-  const canShuffle = !items.some((i) => i.status === "done");
+  // prd-recommendation-p1 US-P16: only before the day has started. A random course rolls again instead (US-014).
+  const notStarted = !items.some((i) => i.status === "done");
+  const canShuffle = notStarted && course.kind !== "random";
+
+  // US-014: same answers and times, a new point, a new course. The old course stays (back button returns to it).
+  async function rerollDay() {
+    if (!course || reroll === "loading") return;
+    setReroll("loading");
+    const p = course.user_profile;
+    try {
+      const point = await api.drawPoint();
+      saveLastPoint(point);
+      const next = await api.createRandomCourse(
+        point.location_id,
+        { interests: p.interests, fitness_level: p.fitness_level, max_walk_min: p.max_walk_min,
+          avoid_slopes: p.avoid_slopes, condition_today: p.condition_today, diet: p.diet },
+        p.start_time ?? "10:00", p.end_time ?? "18:00",
+      );
+      router.push(`/course/${next.id}`);
+    } catch {
+      setReroll("error");
+    }
+  }
 
   async function shuffleDay() {
     if (!course || shuffle === "loading") return;
@@ -102,7 +163,7 @@ export default function CoursePage() {
               <h2>{c.mapTitle}</h2>
               <small>{C.mapHint}</small>
             </div>
-            <JejuMap items={items} places={places} center={center} onSelectOrder={setSelected} onViewStop={viewStop} />
+            <JejuMap items={items} places={places} center={center} randomPoint={randomPoint} onSelectOrder={setSelected} onViewStop={viewStop} />
             <div className="v9-map-footer">
               <span>{C.lineNote}</span>
               <a href={`https://map.kakao.com/?q=${encodeURIComponent(area?.name_ko ?? "제주도")}`} target="_blank" rel="noopener noreferrer">
@@ -136,7 +197,7 @@ export default function CoursePage() {
           <h1>{C.title(areaName)}</h1>
           <p className="v9-route-intro">{c.routeIntro}</p>
           <div className="v9-route-tags">
-            <span className={free ? "is-preview" : "is-premium"}>{free ? C.tierFree : C.tierPremium}</span>
+            {PAYWALL_ENABLED && <span className={free ? "is-preview" : "is-premium"}>{free ? C.tierFree : C.tierPremium}</span>}
             <span>
               {course.total_items} {tx.stops}
               {course.locked_count > 0 ? ` · ${C.previewShown(items.length, course.total_items)}` : ""}
@@ -149,6 +210,7 @@ export default function CoursePage() {
           </div>
           <WindowSummary course={course} />
           <p className="v9-fineprint">{C.timesNote}</p>
+          {course.kind === "random" && notStarted && <RandomBanner course={course} onReroll={rerollDay} state={reroll} />}
 
           {canShuffle && (
             <div className="v9-shuffle">

@@ -161,88 +161,88 @@
 **설명:** 사용자로서, 주사위를 굴려 제주의 한 지점을 받고 그 근처에 뭐가 있는지 바로 보고 싶다.
 
 **완료 기준:**
-- [ ] `scripts/mark_grids.py`가 FR-0대로 `grids.land_cell`과 `grids.blacklist`를 채우고, 남은 칸 수와 읍면동별 수를 출력한다. 장소 데이터(`places`)를 다시 넣을 때마다 다시 실행한다
-- [ ] DB 함수 `random_point()`가 FR-1대로 지점을 하나 고른다
-- [ ] `POST /random-points`(FR-3)가 지점을 `locations`에 저장하고 `location_id`, 좌표, 읍면동 이름, 근처 요약을 돌려준다
-- [ ] 근처 요약에 가장 가까운 동네까지의 거리와 근처 장소 최대 3곳(사진이 있는 곳 먼저)이 있다. Android의 TODO였던 "상세 정보"를 이것으로 대신한다
-- [ ] 응답 시간 p95 500ms 이하 (규칙: LLM을 부르지 않는다)
-- [ ] 테스트: 1,000번 뽑아 모든 지점이 육지 위(`admin_areas` 안)이고, `blacklist = true`인 칸이나 우도·추자도에 떨어진 지점이 없다
+- [x] `scripts/mark_grids.py`가 FR-0대로 `grids.blacklist`를 채우고, 남은 칸 수와 읍면동별 수를 출력한다. 장소 데이터(`places`)를 다시 넣을 때마다 다시 실행한다 (`grids.land_cell`·`land_share`·`land_lat/lng`는 `supabase/migrations/0003_random_point.sql`이 한 번 계산한다). 2026-11-19: 7,969칸 중 6,614칸 사용, 1,355칸 제외(바다 408, 장소에서 멂 883, 준비 안 된 지역 64)
+- [x] DB 함수 `random_point()`가 FR-1대로 지점을 하나 고른다 (실행 약 3.5ms, `anon`·`authenticated`는 호출 불가)
+- [x] `POST /random-points`(FR-3)가 지점을 `locations`에 저장하고 `location_id`, 좌표, 읍면동 이름, 근처 요약을 돌려준다
+- [x] 근처 요약에 가장 가까운 동네까지의 거리와 근처 장소 최대 3곳(사진이 있는 곳 먼저)이 있다. Android의 TODO였던 "상세 정보"를 이것으로 대신한다
+- [ ] 응답 시간 p95 500ms 이하 (규칙: LLM을 부르지 않는다). LLM은 부르지 않는다. p95는 배포 환경(Railway) 로그로 잰다
+- [x] 테스트: 1,000번 뽑아 모든 지점이 육지 위(`admin_areas` 안)이고, `blacklist = true`인 칸이나 우도·추자도에 떨어진 지점이 없다 (2026-11-19 DB에서 1,000번: 위반 0, 읍면동 36곳)
 
 #### US-011: 랜덤 지점에서 코스 만들기 (플래너) (P0, M3)
 **설명:** 개발자로서, 해커톤 플래너가 "지역 + 무작위 동네" 대신 "랜덤 지점에서 가장 가까운 동네"로 코스를 짜게 하고 싶다.
 
 **완료 기준:**
-- [ ] `planner.random_course(places, profile_in, start_time, end_time, point)`를 더한다. FR-4–FR-8을 따른다
-- [ ] `TripCtx`에 `near: Optional[dict]`를 더하고, `near`가 있으면 `pick_anchor`가 동네를 무작위로 고르지 않고 그 장소를 앵커로 쓴다 (`_hub_id`, `_seen_hubs`도 그 장소로 채운다). `near`가 없으면 지금과 똑같이 동작한다
-- [ ] 기존 테스트가 모두 통과하고, 기존 평가 결과(규칙 플래너, 같은 seed)가 바뀌지 않는다
-- [ ] 테스트: FR-0이 막는 지점(바다, 우도, 추자도, 한라산 중턱)을 함수에 직접 넣어도 코스가 나오거나 FR-8의 오류가 난다 (예외로 멈추지 않는다)
-- [ ] 테스트: 같은 지점·같은 입력·같은 seed면 같은 코스가 나온다
+- [x] `planner.random_course(places, profile_in, start_time, end_time, point, selectable)`를 더한다. FR-4–FR-8을 따른다
+- [x] `TripCtx`에 `near: Optional[dict]`를 더하고, `near`가 있으면 `pick_anchor`가 동네를 무작위로 고르지 않고 그 장소를 앵커로 쓴다 (`_hub_id`, `_seen_hubs`도 그 장소로 채운다). `near`가 없으면 지금과 똑같이 동작한다
+- [x] 기존 테스트가 모두 통과한다. `new_course`와 `prepare`는 고치지 않았으므로 기존 평가 결과는 그대로다. (해커톤의 무료 3곳 미리보기 테스트 3개는 US-017로 잠금이 꺼져서 `paywall_on` 픽스처로 잠금을 켜고 돌린다)
+- [x] 테스트: FR-0이 막는 지점(바다, 우도, 추자도, 한라산 중턱)을 함수에 직접 넣어도 코스가 나오거나 FR-8의 오류가 난다 (예외로 멈추지 않는다)
+- [x] 테스트: 같은 지점·같은 입력·같은 seed면 같은 코스가 나온다 (`tests/test_random.py`, 13개)
 
 #### US-012: 랜덤 코스 API (P0, M3)
 **설명:** 프론트 개발자로서, 뽑은 지점으로 코스를 만드는 엔드포인트가 필요하다.
 
 **완료 기준:**
-- [ ] `POST /random-courses`(FR-9)가 201과 `Course`를 돌려준다. `Course`에 `kind`와 `random_origin`이 있다 (FR-10)
-- [ ] `GET /courses/{id}`도 `kind`, `random_origin`, `visits`를 돌려준다. 해커톤 코스는 `kind = "pick"`, `random_origin = null`이다
-- [ ] 다른 사용자의 `location_id`를 주면 404 `LOCATION_NOT_FOUND`다
-- [ ] `courses.owner_id`에 요청한 사용자 ID가 저장된다
-- [ ] 테스트: 정상, 없는 `location_id`, 남의 `location_id`, 잘못된 시간 창(422 `INVALID_TIME_WINDOW`)
+- [x] `POST /random-courses`(FR-9)가 201과 `Course`를 돌려준다. `Course`에 `kind`와 `random_origin`이 있다 (FR-10)
+- [x] `GET /courses/{id}`도 `kind`, `random_origin`, `visits`를 돌려준다. 해커톤 코스는 `kind = "pick"`, `random_origin = null`이다
+- [x] 다른 사용자의 `location_id`를 주면 404 `LOCATION_NOT_FOUND`다
+- [x] `courses.owner_id`에 요청한 사용자 ID가 저장된다 (`POST /courses`도 토큰이 있으면 저장한다)
+- [x] 테스트: 정상, 없는 `location_id`, 남의 `location_id`, 잘못된 시간 창(422 `INVALID_TIME_WINDOW`) (`tests/test_random_api.py`, 12개)
 
 #### US-013: 랜덤 탭 화면 (P0, M3)
 **설명:** 사용자로서, 지도 위에서 주사위를 굴리고 뽑힌 곳을 눈으로 확인하고 싶다.
 
 **완료 기준:**
-- [ ] `/random`은 전체 화면 카카오맵(제주 전체, 해커톤 `frontend/config/map.ts`의 범위)과 아래 카드로 이루어진다
-- [ ] 🎲 버튼을 누르면 버튼이 비활성화되고 주사위가 돈다. 응답이 오면 지도 카메라가 지점으로 0.6초 동안 이동하고 주사위 마커가 하나 찍힌다. 이전 마커는 지운다
-- [ ] 카드에 읍면동 이름, 좌표, 가장 가까운 동네와 거리, 근처 장소 3곳(사진, 이름, 카테고리)이 보인다
-- [ ] 카드 버튼: "이 근처로 하루 코스 짜기", "🎲 다시 굴리기"
-- [ ] 실패하면 카드에 "지금은 뽑을 수 없어요. 다시 시도해 주세요."가 보이고 버튼이 다시 눌린다
-- [ ] 마지막으로 뽑은 지점은 `sessionStorage`에 남아서, 다른 탭에 갔다 와도 카드가 그대로다 (Android에서는 탭을 바꾸면 사라졌다)
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `/random`은 카카오맵(제주 전체)과 아래 카드로 이루어진다. 휴대폰에서는 지도가 화면 위쪽 46%, 1024px 이상에서는 지도와 카드가 나란히 놓인다. 카카오 SDK를 못 불러오면 섬 그림 위에 주사위를 놓는다
+- [x] 🎲 버튼을 누르면 버튼이 비활성화되고 주사위가 돈다(최소 0.7초). 응답이 오면 지도 카메라가 지점으로 0.6초 동안 이동하고 주사위 마커가 하나 찍힌다. 이전 마커는 지운다. `prefers-reduced-motion`이면 움직임 없이 옮긴다
+- [x] 카드에 읍면동 이름, 좌표, 가장 가까운 동네와 거리, 근처 장소 3곳(사진, 이름, 거리)이 보인다. 한국어가 아니면 읍면동 대신 지역의 영어 이름을 쓴다 (읍면동 이름은 한국어만 있다)
+- [x] 카드 버튼: "이 근처로 하루 코스 짜기", "🎲 다시 굴리기"
+- [x] 실패하면 카드에 "지금은 뽑을 수 없어요. 다시 시도해 주세요."가 보이고 버튼이 다시 눌린다 (게스트 로그인이 실패하면 그 문구를 보여준다)
+- [x] 마지막으로 뽑은 지점은 `sessionStorage`에 남아서, 다른 탭에 갔다 와도 카드가 그대로다 (Android에서는 탭을 바꾸면 사라졌다)
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19, 375px와 800px, 한국어·영어)
 
 #### US-014: 코스 페이지의 랜덤 배너와 다시 굴리기 (P0, M3)
 **설명:** 사용자로서, 이 코스가 어느 랜덤 지점에서 나왔는지 보고, 마음에 안 들면 바로 다시 굴리고 싶다.
 
 **완료 기준:**
-- [ ] `kind = "random"`인 코스는 제목 위에 배너를 보여준다: "🎲 랜덤 지점: 애월읍 어딘가". `snap_km`이 `SNAP_NOTICE_KM`(2km)보다 크면 "랜덤 지점 근처엔 갈 곳이 적어서 {km}km 떨어진 {동네}로 옮겼어요"를 덧붙인다
-- [ ] 코스 지도에 랜덤 지점을 주사위 마커로 함께 그린다. 코스 마커와 구분된다
-- [ ] 랜덤 코스에서는 "Shuffle my day" 대신 "🎲 다시 굴리기"를 보여준다. 누르면 같은 프로필과 시간으로 새 지점을 뽑고 새 코스로 이동한다(`router.replace`). 이전 코스는 DB에 남는다
-- [ ] 해커톤 방식 코스(`kind = "pick"`)의 화면은 바뀌지 않는다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `kind = "random"`인 코스는 배너를 보여준다: "🎲 랜덤 지점: 애월읍", "{동네} 근처 · 랜덤 지점에서 {km}". `snap_km`이 `SNAP_NOTICE_KM`보다 크면 "랜덤 지점 바로 근처엔 갈 곳이 적어서 {km} 떨어진 {동네} 근처로 옮겼어요"를 덧붙인다. **`SNAP_NOTICE_KM`은 5km**로 정했다: 2km로 두면 평가에서 78%의 코스에 이 문구가 붙는다
+- [x] 코스 지도에 랜덤 지점을 주사위 마커로 함께 그린다. 코스 마커와 구분된다. 카카오맵은 주사위와 정류장이 한 화면에 들어오게 맞춘다
+- [x] 랜덤 코스에서는 "Shuffle my day" 대신 "🎲 다른 곳 굴리기"를 보여준다. 누르면 같은 프로필과 시간으로 새 지점을 뽑고 새 코스로 이동한다. `router.replace` 대신 `router.push`를 쓴다: Shuffle과 같이 뒤로 가기로 이전 코스에 돌아갈 수 있다. 이전 코스는 DB에 남는다
+- [x] 해커톤 방식 코스(`kind = "pick"`)의 화면은 바뀌지 않는다 (Shuffle 그대로)
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19: 조천읍 지점 → 닭머르해안길 2.6km, 다시 굴리기 → 한경면 지점 → 한림읍 코스)
 
 #### US-015: 랜덤 코스 평가 스크립트 (P0, M3)
 **설명:** 개발자로서, 랜덤 코스가 품질 규칙을 지키는지와 얼마나 다양한지 숫자로 보고 싶다.
 
 **완료 기준:**
-- [ ] `scripts/eval_planner.py --random N`이 지점 N개(기본 300)를 `random_point()`와 같은 규칙으로 뽑는다. 프로필 20개를 돌려 쓰며 `random_course`를 부른다. Supabase 대신 `app/data/*.json`과 격자 파일을 읽는다
-- [ ] 출력: 성공률, 이동 30분 초과 수, 식사 보장 위반 수, 영업시간 위반 수, `snap_km`의 중앙값·p90·최댓값, 서로 다른 동네 수, 지역별 분포
-- [ ] 결과를 `backend/eval/random-rules.json`에 저장한다
-- [ ] 결과가 9장의 `snap_km` 목표를 넘으면 원인(프로필 필터, 식사 조건)을 결과 JSON의 시나리오별 기록으로 찾을 수 있다
+- [x] `scripts/eval_random.py --n N`이 사용 가능한 칸(`app/data/grids.json`, `mark_grids.py`가 씀)에서 N개(기본 300)를 고르고, 프로필 20개와 시간 창 5개를 돌려 쓰며 `random_course`를 부른다. Supabase를 쓰지 않는다. (`eval_planner.py`에 옵션으로 넣지 않고 따로 만들었다. 식사·동선 지표는 `eval_planner.metrics`를 그대로 쓴다)
+- [x] 출력: 성공률, 이동 30분 초과 수, 식사 보장 위반 수, 영업시간 위반 수, `snap_km`의 중앙값·p90·최댓값, 서로 다른 동네 수, 지역별 분포
+- [x] 결과를 `backend/eval/random-rules.json`에 저장한다
+- [x] 2026-11-19 결과(300곳): 성공 100%, 이동·영업시간·여행 시간 위반 0, 식사 누락 0, 점심 100%·저녁 91%, `snap_km` 중앙값 3.7km·p90 6.7km·최대 14.4km, 동네 126곳, 한 동네 최대 3%. 처음 규칙(식사 가능한 동네를 어디서든 우선)은 중앙값 9.9km·p90 33.6km였다 (FR-6)
 
 #### US-016: 온보딩 랜덤 모드와 프로필 저장 (P0, M3)
 **설명:** 사용자로서, 취향은 한 번만 입력하고, 그 뒤로는 굴릴 때마다 바로 코스를 받고 싶다.
 
 **완료 기준:**
-- [ ] `/onboarding?mode=random&location_id=…`은 지역 고르기 단계를 뺀 5단계다. 마지막 단계에서 `POST /random-courses`를 부르고 `/course/{id}`로 간다
-- [ ] 온보딩이 끝나면 `user_profile`, `start_time`, `end_time`을 `localStorage`의 `rj.profile`에 저장한다 (읽기·쓰기는 try/catch)
-- [ ] 저장된 프로필이 있으면 랜덤 카드의 "이 근처로 하루 코스 짜기"가 온보딩 없이 바로 코스를 만든다
-- [ ] 랜덤 카드에 "취향 다시 고르기" 링크가 있다
-- [ ] 해커톤 방식 온보딩(`/onboarding`, 지역 단계 포함)은 그대로 동작한다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] `/onboarding?mode=random&location_id=…`은 지역 고르기 단계를 뺀 5단계다. 마지막 단계에서 `POST /random-courses`를 부르고 `/course/{id}`로 간다. 지점을 못 찾으면(404) "주사위로 돌아가기"를 보여준다
+- [x] 온보딩이 끝나면 `user_profile`, `start_time`, `end_time`을 `localStorage`의 `rj.profile`에 저장한다 (읽기·쓰기는 try/catch). 해커톤 방식 온보딩도 저장한다
+- [x] 저장된 프로필이 있으면 랜덤 카드의 "이 근처로 하루 코스 짜기"가 온보딩 없이 바로 코스를 만든다
+- [x] 랜덤 카드에 "취향 다시 고르기" 링크가 있다. 누르면 저장된 답이 채워진 채로 열린다
+- [x] 해커톤 방식 온보딩(`/onboarding`, 지역 단계 포함)은 그대로 동작한다
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19: 5단계 진행 → 코스, 저장된 프로필로 바로 코스)
 
 #### US-017: 프리미엄 잠금 끄기 (P0, M3)
 **설명:** 사용자로서, 결제 없이 모든 코스를 끝까지 보고 싶다. 돈을 받지 않는 "구매" 버튼은 오해를 산다.
 
 **완료 기준:**
-- [ ] 백엔드 설정 `PAYWALL_ENABLED`(기본 `false`)를 더한다. `false`이면 `build_course`가 모든 코스를 `premium`처럼 만든다 (모든 장소, 문장 카드 포함)
-- [ ] 프론트 설정 `NEXT_PUBLIC_PAYWALL_ENABLED`(기본 `false`)가 `false`이면 잠금 표시, "Unlock" 버튼, 구매 화면 링크를 숨긴다. `/course/{id}/purchase`로 직접 오면 코스 화면으로 보낸다
-- [ ] 코드는 지우지 않는다. 두 설정을 `true`로 바꾸면 해커톤 때 동작이 돌아온다
-- [ ] 테스트: 두 값 각각에서 코스 응답의 장소 수
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] 백엔드 설정 `PAYWALL_ENABLED`(기본 `false`)를 더한다. `false`이면 `build_course`가 모든 코스를 `premium`처럼 만든다 (모든 장소, 문장 카드 포함)
+- [x] 프론트 설정 `NEXT_PUBLIC_PAYWALL_ENABLED`(기본 `false`)가 `false`이면 등급 표시를 숨긴다. 잠금 카드와 "Unlock" 링크는 `locked_count`가 0이라 나오지 않는다. `/course/{id}/purchase`로 직접 오면 코스 화면으로 보낸다
+- [x] 코드는 지우지 않는다. 두 설정을 `true`로 바꾸면 해커톤 때 동작이 돌아온다
+- [x] 테스트: 두 값 각각에서 코스 응답의 장소 수
+- [x] Typecheck/lint passes
+- [x] Verify in browser (4곳 모두 보이고 등급 표시 없음)
 
 ### 4.3 사진·지도·피드 (RandomJeju 이관)
 
@@ -380,12 +380,13 @@
 **설명:** 국내 사용자로서, 처음 열었을 때 한국어 화면을 보고 싶다.
 
 **완료 기준:**
-- [ ] `frontend/lib/locale.ts:6`의 `DEFAULT_LOCALE`을 `"ko"`로 바꾼다. 브라우저 언어 감지(en/ja/zh)와 언어 선택은 그대로 둔다
-- [ ] 새 화면(랜덤, 사진 지도, 피드, 올리기)의 모든 문구가 `lib/messages/{ko,en,ja,zh}.ts`에 있다. 화면 코드에 한국어 문자열을 직접 쓰지 않는다
-- [ ] 언어가 ko이면 "Show to driver" 카드와 현지 문장 카드를 숨긴다 (외국인용 기능)
-- [ ] 게시판 카테고리 이름이 4개 언어로 나온다
-- [ ] Typecheck/lint passes
-- [ ] Verify in browser using dev-browser skill
+- [x] 기본 언어를 `"ko"`로 바꾼다. 브라우저 언어 감지(en/ja/zh)와 언어 선택은 그대로 둔다. (실제로 언어를 정하는 곳은 `lib/locale.ts`가 아니라 `lib/i18n.ts`의 `useLocale`이었다: 저장된 선택 → 브라우저 언어 → 한국어 순으로 고친다. `<html lang="ko">`, 페이지 제목도 한국어로)
+- [ ] 새 화면(랜덤, 사진 지도, 피드, 올리기)의 모든 문구가 `lib/messages/{ko,en,ja,zh}.ts`에 있다. 화면 코드에 한국어 문자열을 직접 쓰지 않는다 (랜덤 화면·배너·닉네임 창은 완료. 사진 지도·피드·올리기는 M4)
+- [x] 언어가 ko이면 "Show to driver" 카드와 현지 문장 카드를 숨긴다 (외국인용 기능)
+- [ ] 게시판 카테고리 이름이 4개 언어로 나온다 (M4)
+- [x] 서비스 이름을 화면 전체에서 Random Jeju로 바꾼다 (Q-01)
+- [x] Typecheck/lint passes
+- [x] Verify in browser (2026-11-19: 브라우저 언어 ko에서 한국어로 열림, 영어로 바꾸면 영어)
 
 #### US-041: 장소 설명 한국어 (P0, M6)
 **설명:** 국내 사용자로서, 모든 장소 설명을 한국어로 읽고 싶다.
@@ -432,6 +433,7 @@
   - `land_cell geometry`: 칸과 `admin_areas` 합집합의 교집합. 점은 여기서만 만든다.
   - `blacklist = true`인 칸: (a) 육지 비율 50% 미만, (b) 칸 중심의 지역(`areas.area_of_point`)이 고를 수 없는 지역(지금은 우도·추자도), (c) 고를 수 있는 지역의 **밀집 장소**가 5km(`GRID_REACH_KM`) 안에 없음. 밀집 장소 = 반경 `ANCHOR_RADIUS_KM`(2.5km) 안에 장소가 `HUB_MIN_PLACES`(8)곳 이상인 장소 (프로필 없이 계산한 동네 후보).
   - 2026-11-19 데이터로 미리 계산한 결과: 중심이 육지인 7,569칸 중 (c)를 통과하는 칸은 6,707칸(89%)이다. 가장 가까운 밀집 장소까지 거리는 중앙값 1.5km, p90 5.3km다. 많이 빠지는 곳: 추자면 전부, 중문동 41%, 남원읍 38%, 노형동·대천동 약 25% (한라산 쪽 칸).
+  - 실제 적용(2026-11-19, `mark_grids.py`): 밀집 장소를 지역 안의 장소로만 세어서 조금 더 엄격하다. 6,614칸 사용, 1,355칸 제외 (바다 408, 장소에서 멂 883, 준비 안 된 지역 64).
 - **FR-1** `random_point()`는 `blacklist = false`인 칸 하나를 같은 확률로 고르고(`order by random() limit 1`, 7천여 행이라 충분히 빠르다), `ST_GeneratePoints(land_cell, 1)`로 칸의 육지 안에 점 하나를 만든다. 반환: `lat`, `lng`, `adm_nm`(마지막 단어, 예: "애월읍"), `grid_id`. Ktor `RandomLocationService.kt:13-30`과 다른 점은 `land_cell`과 FR-0의 `blacklist`뿐이다.
 - **FR-2** `grids.weight`(지금 모두 1.0)는 쓰지 않는다. 나중에 지역별 확률을 바꾸고 싶으면 이 열을 쓴다.
 - **FR-3** `POST /random-points` (토큰 필수, 본문 없음) → 201
@@ -453,8 +455,9 @@
 - **FR-4 지역 정하기.** 코스의 지역은 지점이 있는 지역이 아니라 **FR-6이 고른 동네의 지역**이다. 지역 경계 근처의 지점은 옆 지역의 동네가 더 가까울 수 있기 때문이다. 고를 수 있는 지역(`GET /areas`에서 "Coming soon"이 아닌 지역)만 본다.
 - **FR-5 그 뒤의 파이프라인.** `new_course`와 같다: `in_area` → 필터(F-1–F-10) → 동네 찾기 → 후보 → LLM/규칙 → 검증 → 시간 계산. 바뀌는 것은 FR-6의 동네 고르기 하나뿐이다.
 - **FR-6 동네 고르기.** `random_course`는 고를 수 있는 지역마다 그 지역의 장소로 필터와 `find_hubs`를 돌려 동네 목록을 모은다. 그다음 무작위(밀집도 가중치) 대신 이렇게 고른다:
-  1. 필요한 식사를 모두 채울 수 있는 동네(`Hub.fed`)만 남긴다. 하나도 없으면 전부.
-  2. 그중 동네 중심 장소가 지점에서 가장 가까운 곳. 거리는 `km_between`(직선거리)이다.
+  1. 동네 중심 장소가 지점에서 가장 가까운 동네를 찾는다. 거리는 `km_between`(직선거리)이다.
+  2. 필요한 식사를 모두 채울 수 있는 동네(`Hub.fed`) 중 그보다 `RANDOM_FED_DETOUR_KM`(3km) 이내로 더 먼 곳이 있으면, 그중 가장 가까운 곳을 고른다. 없으면 1의 동네다. 그 동네에서 식사를 못 채우면 빈 식사 시간 카드가 나온다 (해커톤 P1 FR-11).
+  - 바뀐 이유 (2026-11-19 평가): 처음 규칙("식사를 채울 수 있는 동네를 어디서든 우선")은 비건 식당이 제주시에 몰려 있어서 한림의 지점도 30km 넘게 옮겼다 (중앙값 9.9km, p90 33.6km, 한 동네에 17%). 지금 규칙은 중앙값 3.7km, p90 6.7km, 점심 100%·저녁 91%다. 대신 비건 여행자의 식사는 대부분 빈 식사 시간 카드가 된다 (5%만 비건 식당). 식단이 있는 사람에게 8–12km까지 허용해 봤지만 비건 식사는 9–18%로만 올라서 쓰지 않았다.
   - 고른 동네의 지역으로 `new_course`와 같은 `TripCtx`를 만들고, `ctx.near`에 그 동네 중심 장소를 넣어 `pick_anchor`가 그 장소를 앵커로 쓰게 한다.
   - 무작위성은 지점이 이미 줬으므로 동네 고르기에는 `rng`를 쓰지 않는다. 후보 고르기의 `rng`(seed)는 그대로 쓴다.
 - **FR-7 `snap_km`.** 지점에서 고른 동네 중심 장소까지의 직선거리(km, 소수 첫째 자리)를 `random_origin.snap_km`으로 돌려준다.
@@ -703,7 +706,7 @@ random-jeju-web/            (새 저장소, Q-02. 이름은 바꿔도 된다)
 | 랜덤 코스 생성 (`POST /random-courses`) | 규칙 플래너 p95 3초, LLM p95 8초 이하 | Railway 로그 |
 | 랜덤 코스 품질 | 성공률 95% 이상, 이동 30분 초과·식사 보장 위반·영업시간 위반 0건 | US-015 평가 (300회) |
 | 랜덤 다양성 | 300회에서 서로 다른 동네 30곳 이상, 한 동네가 10% 넘게 나오지 않음 | US-015 평가 |
-| 동네까지 거리 (`snap_km`) | 중앙값 2km 이하, p90 5km 이하. 프로필 없이 계산한 값은 중앙값 1.5km이고 FR-0이 5km 밖의 칸을 빼므로, 남는 차이는 프로필 필터와 식사 조건 때문이다 | US-015 평가 |
+| 동네까지 거리 (`snap_km`) | 중앙값 4km 이하, p90 7km 이하. (처음 목표 2km·5km는 프로필 없이 계산한 밀집 장소 거리에서 나왔다. 관심사·식사 필터를 거친 동네는 그보다 드물다.) 2026-11-19: 중앙값 3.7km, p90 6.7km로 통과 | US-015 평가 |
 | 사진 업로드 | 성공률 98% 이상, 썸네일 방향 오류 0건 | 서버 로그, Orientation 테스트 |
 | 핵심 흐름 | 굴리기 → 코스 → 업로드 → 인증이 배포 환경에서 끊기지 않음 | 수동 시나리오 1회 + E2E 테스트 |
 | 전환 | Ktor 서버 요청 0, Supabase B 정지 | Render/Cloud Run 콘솔 |

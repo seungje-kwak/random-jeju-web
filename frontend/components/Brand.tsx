@@ -23,7 +23,7 @@ export function Brand({ href = "/", label }: { href?: string | null; label?: str
     <>
       <BrandMark />
       <span>
-        MyPace <span className="brand__place">Jeju</span>
+        Random <span className="brand__place">Jeju</span>
       </span>
     </>
   );

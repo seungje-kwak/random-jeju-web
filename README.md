@@ -18,7 +18,7 @@ data/                  장소 시드 CSV, 데모 코스
 | M0 | 저장소 만들기, RLS 긴급 조치, DB 비밀번호 교체, Vercel·Railway 연결 | 저장소·RLS·비밀번호 완료 (2026-11-19). Vercel·Railway 연결 남음 |
 | M1 | 해커톤 스키마·장소 데이터를 RandomJeju Supabase로 | 완료 (2026-11-19). 배포 환경 변수(US-005)는 Vercel·Railway 연결 뒤 |
 | M2 | 익명 세션, 토큰 검증 | 완료 (2026-11-19). 닉네임 창의 화면 연결은 M4 |
-| M3 | 랜덤 지점 + 주변 코스 | |
+| M3 | 랜덤 지점 + 주변 코스 | 완료 (2026-11-19). `/random` 화면, 랜덤 코스, 한국어 기본, 유료 잠금 끔. 배포 환경의 응답 시간 측정은 Vercel·Railway 연결 뒤 |
 | M4 | 사진 업로드, 사진 지도, 피드 | |
 | M5 | 방문 인증 | |
 | M6 | 한국어 완성 | |
@@ -29,8 +29,11 @@ data/                  장소 시드 CSV, 데모 코스
 - `0000_randomjeju_baseline.sql`: RandomJeju 프로젝트에 이미 있는 구조(2026-11-19 덤프). 다시 실행하지 않는다.
 - `0001_mypace.sql`: 해커톤 테이블. 2026-11-19 적용.
 - `0002_merge.sql`: 통합용 열과 `visits` 테이블 (PRD FR-30). 2026-11-19 적용. 시간 열 변환(FR-32)과 정책 정리(FR-34)는 Ktor를 끄는 M7에 한다.
+- `0003_random_point.sql`: 격자 칸을 육지로 자르고 `random_point()`, `mark_grids()` 함수를 만든다 (PRD FR-0, FR-1). 2026-11-19 적용.
 
-장소 데이터는 `backend/scripts/seed_supabase.py`로 넣는다 (다시 실행해도 된다).
+장소 데이터는 `backend/scripts/seed_supabase.py`로 넣는다 (다시 실행해도 된다). 장소를 다시 넣었으면 `backend/scripts/mark_grids.py`도 다시 실행한다 (랜덤 지점을 뽑을 칸이 장소 위치에 따라 정해진다).
+
+랜덤 코스 품질 평가 (Supabase 없이, 규칙 플래너): `backend/.venv/Scripts/python.exe backend/scripts/eval_random.py` → `backend/eval/random-rules.json`
 
 ## 로컬 실행
 

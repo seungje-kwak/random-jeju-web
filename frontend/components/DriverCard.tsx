@@ -36,7 +36,7 @@ export function DriverCard({ place, onClose }: { place: Place; onClose: () => vo
     <div role="dialog" aria-modal="true" aria-label={tx.driverTitle} className="driver-modal">
       <div className="driver-sheet" aria-describedby="driver-info" >
         <div className="driver-sheet__top">
-          <div className="v9-brand v9-driver-brand">MyPace <strong>Jeju</strong></div>
+          <div className="v9-brand v9-driver-brand">Random <strong>Jeju</strong></div>
           <button ref={closeRef} onClick={onClose} className="driver-close" aria-label={tx.close}>✕</button>
         </div>
         <div className="driver-sheet__body">

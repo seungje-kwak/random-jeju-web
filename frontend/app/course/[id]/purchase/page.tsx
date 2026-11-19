@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { V9Header } from "@/components/V9Header";
-import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { CourseSkeleton, MessageScreen, NewPlanLink, PrimaryButton } from "@/components/States";
-import { PREMIUM_PRICE_LABEL } from "@/config/pricing";
+import { PAYWALL_ENABLED, PREMIUM_PRICE_LABEL } from "@/config/pricing";
 import { api } from "@/lib/api";
 import { travelMessages, useLocale } from "@/lib/i18n";
 import { useCourse } from "@/lib/useCourse";
@@ -25,7 +25,10 @@ export default function PurchasePage() {
   const {locale}=useLocale();
   const tx=travelMessages[locale];
   const pc=purchaseCopy[locale];
-  if(state.kind==="loading")return <CourseSkeleton/>;
+  const router=useRouter();
+  // US-017: with the paywall off there is nothing to buy
+  useEffect(()=>{ if(!PAYWALL_ENABLED)router.replace(`/course/${id}`); },[id,router]);
+  if(!PAYWALL_ENABLED||state.kind==="loading")return <CourseSkeleton/>;
   if(state.kind==="notfound")return <MessageScreen title={tx.notfound} action={<NewPlanLink/>}/>;
   if(state.kind==="error"||!course)return <MessageScreen title={tx.error} action={<PrimaryButton onClick={reload}>{tx.retry}</PrimaryButton>}/>;
   const see=<Link href={`/course/${course.id}`} className="rounded-2xl bg-sea text-white font-semibold py-3.5 px-6">{pc.see}</Link>;
